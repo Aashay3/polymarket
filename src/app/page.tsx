@@ -1,174 +1,144 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, ArrowRight, Command } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Search, ChevronRight, Flame, Clock, Activity } from "lucide-react";
+import { MarketCard } from "@/components/markets/MarketCard";
+import { LeaderboardSection } from "@/components/home/LeaderboardSection";
+import { Footer } from "@/components/layout/Footer";
+import { motion } from "framer-motion";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
-  const [otp, setOtp] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+const CATEGORIES = ["Trending", "Breaking", "New", "Sports", "Crypto", "Politics"];
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep("otp");
-    }, 800);
-  };
+// Grouped dummy data
+const SECTIONS = [
+  {
+    title: "Trending Now",
+    icon: <Flame className="w-5 h-5 text-orange-500" />,
+    markets: [
+      { id: "1", question: "Will Bitcoin hit $100k before December?", yesProb: 42, noProb: 58, volume: "$4.5M", image: "/crypto.png", category: "Crypto" },
+      { id: "2", question: "Will SpaceX land on Mars by 2026?", yesProb: 12, noProb: 88, volume: "$890K", image: "/space.png", category: "Science" },
+      { id: "3", question: "US GDP growth > 2.5% in 2026?", yesProb: 55, noProb: 45, volume: "$1.8M", image: "/economy.png", category: "Economy" },
+      { id: "4", question: "Will ETH flip BTC in market cap by 2028?", yesProb: 25, noProb: 75, volume: "$2.1M", image: "/crypto.png", category: "Crypto" }
+    ]
+  },
+  {
+    title: "Ending Soon",
+    icon: <Clock className="w-5 h-5 text-blue-500" />,
+    markets: [
+      { id: "5", question: "Will the Fed cut rates in the next meeting?", yesProb: 65, noProb: 35, volume: "$5.4M", image: "/economy.png", category: "Economy" },
+      { id: "6", question: "Who will win the NBA Finals?", yesProb: 40, noProb: 60, volume: "$3.2M", image: "/space.png", category: "Sports" },
+      { id: "7", question: "Will OpenAI release GPT-5 this year?", yesProb: 80, noProb: 20, volume: "$6.1M", image: "/crypto.png", category: "Tech" },
+      { id: "8", question: "Will crude oil hit $100/bbl before June?", yesProb: 30, noProb: 70, volume: "$1.1M", image: "/economy.png", category: "Commodities" }
+    ]
+  },
+  {
+    title: "High Volume",
+    icon: <Activity className="w-5 h-5 text-green-500" />,
+    markets: [
+      { id: "9", question: "Will Apple announce a new AR headset?", yesProb: 50, noProb: 50, volume: "$10.5M", image: "/space.png", category: "Tech" },
+      { id: "10", question: "US Presidential Election Winner?", yesProb: 48, noProb: 52, volume: "$20.4M", image: "/politics.png", category: "Politics" },
+      { id: "11", question: "Will Solana flip Ethereum?", yesProb: 15, noProb: 85, volume: "$8.9M", image: "/crypto.png", category: "Crypto" },
+      { id: "12", question: "Will Amazon split its stock in 2026?", yesProb: 35, noProb: 65, volume: "$4.2M", image: "/economy.png", category: "Finance" }
+    ]
+  }
+];
 
-  const handleOtpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) return;
-    setIsLoading(true);
-    // Simulate verification
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push("/dashboard");
-    }, 800);
-  };
-
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push("/dashboard");
-    }, 800);
-  };
+export default function Home() {
+  const [activeTab, setActiveTab] = useState("Trending");
 
   return (
-    <div className="flex min-h-screen items-center justify-center relative overflow-hidden bg-[#000000] pb-20">
-      {/* Background ambient effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-20 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-neutral-800 to-neutral-600 blur-[120px] rounded-full mix-blend-screen" />
+    <>
+    <div className="max-w-[1248px] mx-auto px-4 md:px-6 space-y-8 animate-in fade-in duration-500 pb-10">
+      
+      {/* Search - Mobile/Tablet Only */}
+      <div className="space-y-4 md:hidden">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
+          <input 
+            type="text" 
+            placeholder="Search markets, politicians, crypto..." 
+            className="w-full bg-accent border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all placeholder:text-neutral-500 shadow-sm"
+          />
+        </div>
       </div>
 
-      <div className="w-full max-w-md px-8 pt-10 pb-12 relative z-10 bg-[#050505] border border-neutral-800/60 rounded-2xl shadow-2xl">
-        <div className="flex flex-col items-center mb-10">
-          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(255,255,255,0.15)] ring-1 ring-white/10">
-            <Command className="w-6 h-6 text-black" />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white mb-2">
-            {step === "email" ? "Log in or Sign up" : "Enter Verification Code"}
-          </h1>
-          <p className="text-neutral-400 text-sm text-center">
-            {step === "email"
-              ? "Use your email or another service to continue"
-              : `We sent a 6-digit code to ${email}`}
-          </p>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">Active Markets</h1>
+      </div>
 
-        {step === "email" ? (
-          <div className="space-y-6">
-            <button
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 bg-[#111] hover:bg-[#1a1a1a] text-white font-medium py-3 px-4 rounded-xl border border-neutral-800 transition-colors disabled:opacity-50"
-            >
-              <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              Continue with Google
-            </button>
+      {/* Categories Carousel */}
+      <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+        {CATEGORIES.map(category => (
+          <button
+            key={category}
+            onClick={() => setActiveTab(category)}
+            className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-sm ${
+              activeTab === category 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-white'
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-800"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#050505] px-2 text-neutral-500">Or continue with email</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  className="w-full bg-[#0a0a0a] border border-neutral-800 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/30 transition-all font-mono text-sm"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading || !email}
-                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-neutral-200 text-black font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
-              >
-                {isLoading ? "Sending..." : "Continue"}
-                {!isLoading && <ArrowRight className="w-4 h-4" />}
+      {/* Feed Sections */}
+      <div className="space-y-8 md:space-y-12">
+        {SECTIONS.map((section, sIdx) => (
+          <div key={section.title} className="space-y-4 mt-8 first:mt-0">
+            
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                {section.icon}
+                {section.title}
+              </h2>
+              <button className="text-xs font-semibold text-muted-foreground hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider">
+                View All <ChevronRight className="w-3 h-3" />
               </button>
-            </form>
-          </div>
-        ) : (
-          <form onSubmit={handleOtpSubmit} className="space-y-6">
-            <div className="flex justify-between gap-2">
-              {[1, 2, 3, 4, 5, 6].map((digit, idx) => (
-                <input
-                  key={idx}
-                  type="text"
-                  maxLength={1}
-                  value={otp[idx] || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val && !/^\d+$/.test(val)) return;
-
-                    const newOtp = otp.split("");
-                    newOtp[idx] = val;
-                    setOtp(newOtp.join(""));
-
-                    if (val && idx < 5) {
-                      const nextInput = document.getElementById(`otp-${idx + 1}`);
-                      nextInput?.focus();
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
-                      const prevInput = document.getElementById(`otp-${idx - 1}`);
-                      prevInput?.focus();
-                    }
-                  }}
-                  id={`otp-${idx}`}
-                  className="w-12 h-14 bg-[#0a0a0a] border border-neutral-800 rounded-xl text-center text-2xl text-white focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/30 transition-all font-mono"
-                />
-              ))}
             </div>
-            <button
-              type="submit"
-              disabled={isLoading || otp.length !== 6}
-              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-neutral-200 text-black font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
-            >
-              {isLoading ? "Verifying..." : "Verify & Login"}
-              {!isLoading && <ArrowRight className="w-4 h-4" />}
-            </button>
 
-            <button
-              type="button"
-              onClick={() => setStep("email")}
-              className="w-full text-sm text-neutral-400 hover:text-white transition-colors"
+            {/* 
+              Responsive Layout:
+              - Mobile (< 640px): Vertical stack (`flex-col`)
+              - Tablet (640px - 1024px): Horizontal scroll carousel (`overflow-x-auto snap-x`)
+              - Desktop (> 1024px): Multi-column Grid (`grid-cols-3` or `grid-cols-4`)
+            */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: sIdx * 0.1, duration: 0.4 }}
+              className="
+                flex flex-col gap-5 
+                sm:flex-row sm:overflow-x-auto sm:snap-x sm:snap-mandatory sm:pb-4 sm:-mx-4 sm:px-4 
+                lg:grid lg:grid-cols-3 lg:overflow-visible lg:snap-none lg:mx-0 lg:px-0
+                scrollbar-hide
+              "
             >
-              Back to email
-            </button>
-          </form>
-        )}
+              {section.markets.map((market) => (
+                <div 
+                  key={market.id} 
+                  className="sm:min-w-[320px] sm:snap-center sm:max-w-sm lg:min-w-0 lg:max-w-none"
+                >
+                  <MarketCard
+                    title={market.question}
+                    category={market.category}
+                    volume={market.volume}
+                    yesPrice={market.yesProb}
+                    noPrice={market.noProb}
+                    image={market.image}
+                  />
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        ))}
       </div>
 
-      <div className="fixed bottom-6 flex items-center gap-2 text-xs text-neutral-600 font-mono tracking-widest">
-        <div className="w-2 h-2 rounded-full bg-green-500/50 relative">
-          <div className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75"></div>
-        </div>
-        POLYMARKET CLONE TERMINAL
       </div>
-    </div>
+
+      <LeaderboardSection />
+      <Footer />
+    </>
   );
 }

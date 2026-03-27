@@ -100,6 +100,24 @@ app.prepare().then(() => {
             if (callback) callback({ success: true });
         });
 
+        socket.on("create_market", (marketData, callback) => {
+            const newMarket = {
+                id: (globalMarkets.length + 1).toString(),
+                question: marketData.question,
+                yesShares: 5000, // Initial balanced pool
+                noShares: 5000,
+                endTime: marketData.endTime,
+                volumeAmount: 0,
+                category: marketData.category,
+                status: "OPEN"
+            };
+
+            globalMarkets.push(newMarket);
+            io.emit("market_updated", newMarket); // Broadcast the new market to everyone
+
+            if (callback) callback({ success: true, market: newMarket });
+        });
+
         socket.on("disconnect", () => {
             console.log("Client disconnected:", socket.id);
         });

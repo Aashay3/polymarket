@@ -34,6 +34,7 @@ interface WalletContextType {
     markets: Market[];
     placeTrade: (marketId: string, type: "YES" | "NO", amount: number) => boolean;
     resolveMarket: (marketId: string, outcome: "YES" | "NO") => boolean;
+    createNewMarket: (question: string, category: string, endTime: string) => boolean;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -59,7 +60,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         });
 
         socketInstance.on("market_updated", (updatedMarket: Market) => {
-            setMarkets(prev => prev.map(m => m.id === updatedMarket.id ? updatedMarket : m));
+            setMarkets(prev => {
+                const exists = prev.some(m => m.id === updatedMarket.id);
+                if (exists) {
+                    return prev.map(m => m.id === updatedMarket.id ? updatedMarket : m);
+                } else {
+                    return [...prev, updatedMarket];
+                }
+            });
         });
 
         socketInstance.on("trade_executed", (newTrade: Trade) => {
@@ -127,8 +135,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return true;
     };
 
+    const createNewMarket = (question: string, category: string, endTime: string) => {
+        if (socket) {
+            socket.emit("create_market", { question, category, endTime });
+        }
+        return true;
+    };
+
     return (
-        <WalletContext.Provider value={{ balance, trades, myTrades, markets, placeTrade, resolveMarket }}>
+        <WalletContext.Provider value={{ balance, trades, myTrades, markets, placeTrade, resolveMarket, createNewMarket }}>
             {children}
         </WalletContext.Provider>
     );

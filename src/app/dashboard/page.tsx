@@ -1,243 +1,201 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, ArrowDownRight, Activity, TrendingUp, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Wallet, BarChart2, Clock } from "lucide-react";
 import { TradeModal } from "@/components/TradeModal";
 import { useWallet } from "@/app/context/WalletContext";
+import { Sparkline } from "@/components/ui/Sparkline";
 
-const RECENT_ACTIVITY = [
-    { id: 1, action: "Bought Yes", market: "Fed Rate Cut", amount: "$500.00", time: "2m ago" },
-    { id: 2, action: "Placed Limit Order", market: "Bitcoin $100k", amount: "$1,200.00", time: "15m ago" },
-    { id: 3, action: "Sold No", market: "SpaceX Mars", amount: "$300.00", time: "1h ago" },
+const PORTFOLIO_SPARK = [820, 910, 870, 950, 890, 1050, 980, 1120, 1080, 1220, 1180, 1284];
+
+const ACTIVITY = [
+  { id: 1, action: "Bought YES", market: "Fed Rate Cut Q3", amount: "$500", time: "2m ago", win: true },
+  { id: 2, action: "Bought YES", market: "Bitcoin $100k", amount: "$1,200", time: "15m ago", win: true },
+  { id: 3, action: "Bought NO", market: "SpaceX Mars 2027", amount: "$300", time: "1h ago", win: false },
 ];
 
 export default function DashboardPage() {
-    const { trades, balance, markets } = useWallet();
-    const [selectedMarketId, setSelectedMarketId] = useState<string>(markets[0]?.id || "");
-    const selectedMarket = markets.find(m => m.id === selectedMarketId) || markets[0];
+  const { trades, balance, markets } = useWallet();
+  const [selectedMarketId, setSelectedMarketId] = useState<string>(markets[0]?.id || "");
+  const [tradeType, setTradeType] = useState<"YES" | "NO">("YES");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const [tradeType, setTradeType] = useState<"YES" | "NO">("YES");
-    const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const selectedMarket = markets.find(m => m.id === selectedMarketId) || markets[0];
+  const activePositions = Array.from(new Set(trades.map(t => t.marketId))).length;
+  const totalShares = selectedMarket ? selectedMarket.yesShares + selectedMarket.noShares : 1;
+  const yesPrice = selectedMarket ? (selectedMarket.yesShares / totalShares * 100).toFixed(0) : "0";
+  const noPrice  = selectedMarket ? (selectedMarket.noShares  / totalShares * 100).toFixed(0) : "0";
 
-    const activePositions = Array.from(new Set(trades.map(t => t.marketId))).length;
+  const statCards = [
+    { label: "Portfolio Value",   value: `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, icon: <Wallet className="w-4 h-4" />,    delta: "+12.4%", up: true },
+    { label: "Active Positions",  value: `${activePositions}`,                                                  icon: <BarChart2 className="w-4 h-4" />, delta: null,     up: true },
+    { label: "Total Trades",      value: `${trades.length}`,                                                    icon: <Activity className="w-4 h-4" />,  delta: null,     up: true },
+    { label: "Total Markets",     value: `${markets.length}`,                                                   icon: <TrendingUp className="w-4 h-4" />,delta: null,     up: true },
+  ];
 
-    const totalShares = selectedMarket ? selectedMarket.yesShares + selectedMarket.noShares : 1;
-    const yesPrice = selectedMarket ? selectedMarket.yesShares / totalShares : 0;
-    const noPrice = selectedMarket ? selectedMarket.noShares / totalShares : 0;
+  return (
+    <div className="space-y-6">
 
-    return (
-        <div className="p-6 pb-20 max-w-[1600px] mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Markets Overview</h1>
-                    <p className="text-neutral-400 text-sm">Track your portfolio and active markets</p>
-                </div>
-
-                <div className="flex gap-2">
-                    <button className="bg-[#111] hover:bg-[#1a1a1a] text-white text-sm font-medium px-4 py-2 rounded-lg border border-[#222] transition-colors">
-                        Filter
-                    </button>
-                    <button className="bg-white hover:bg-neutral-200 text-black text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                        New Order
-                    </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-
-                {/* Main Chart Area */}
-                <div className="lg:col-span-2 xl:col-span-3 space-y-6">
-                    {/* Portfolio Summary Card */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5 flex flex-col justify-between">
-                            <span className="text-neutral-400 text-sm mb-2 font-medium">Portfolio Value</span>
-                            <div className="flex items-end justify-between">
-                                <span className="text-3xl font-bold text-white tracking-tight">$4,250.00</span>
-                                <span className="flex items-center text-green-500 text-sm font-medium bg-green-500/10 px-2 py-0.5 rounded">
-                                    <ArrowUpRight className="w-3 h-3 mr-1" />
-                                    +5.2%
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5 flex flex-col justify-between">
-                            <span className="text-neutral-400 text-sm mb-2 font-medium">Cash Balance</span>
-                            <div className="flex items-end justify-between">
-                                <span className="text-3xl font-bold text-white tracking-tight">$1,050.00</span>
-                            </div>
-                        </div>
-
-                        <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5 flex flex-col justify-between">
-                            <span className="text-neutral-400 text-sm mb-2 font-medium">Open Positions</span>
-                            <div className="flex items-end justify-between">
-                                <span className="text-3xl font-bold text-white tracking-tight">{activePositions}</span>
-                                <span className="text-neutral-500 text-sm font-medium">Active</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Active Market Detail */}
-                    <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl overflow-hidden flex flex-col h-[500px]">
-                        <div className="p-5 border-b border-[#1a1a1a] flex justify-between items-center bg-[#0a0a0a]">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="bg-white/10 text-white text-xs px-2 py-0.5 rounded font-medium">{selectedMarket?.category || "Finance"}</span>
-                                    <span className="text-neutral-500 text-xs flex items-center gap-1">
-                                        <Activity className="w-3 h-3" />
-                                        Vol: ${(selectedMarket?.volumeAmount / 1000000).toFixed(1)}M
-                                    </span>
-                                </div>
-                                <h2 className="text-xl font-semibold text-white">{selectedMarket?.question}</h2>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-3xl font-bold text-white">{(yesPrice * 100).toFixed(0)}%</div>
-                                <div className="text-sm text-neutral-400 font-medium tracking-wide border border-white/20 px-2 py-1 rounded inline-block mt-1 bg-white/5">CHANCE OF YES</div>
-                            </div>
-                        </div>
-
-                        {/* Mock Chart Area */}
-                        <div className="flex-1 p-5 relative group">
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                                <TrendingUp className="w-32 h-32 text-neutral-500" />
-                            </div>
-                            <div className="h-full w-full border border-dashed border-[#222] rounded-lg flex items-center justify-center bg-[#0a0a0a]/50">
-                                <div className="text-center w-full h-full flex flex-col items-center justify-center">
-                                    <p className="text-neutral-400 mb-6 font-mono text-sm uppercase tracking-widest">Market Visualization</p>
-                                    <div className="w-[80%] h-32 relative">
-                                        <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full">
-                                            <defs>
-                                                <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
-                                                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                                                </linearGradient>
-                                            </defs>
-                                            <path d="M0,40 L0,40 L20,35 L40,25 L60,30 L80,10 L100,15 L100,40 Z" fill="url(#gradient)" />
-                                            <polyline points="0,40 20,35 40,25 60,30 80,10 100,15" fill="none" stroke="currentColor" strokeWidth="2" className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-                                            <circle cx="100" cy="15" r="1.5" className="fill-white drop-shadow-[0_0_5px_rgba(255,255,255,1)]" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="h-16 border-t border-[#1a1a1a] flex">
-                            <button className="flex-1 hover:bg-[#111] transition-colors border-r border-[#1a1a1a] flex items-center justify-center text-sm font-medium text-neutral-400 hover:text-white">
-                                1H
-                            </button>
-                            <button className="flex-1 bg-white/5 text-white transition-colors border-r border-[#1a1a1a] flex items-center justify-center text-sm font-medium">
-                                1D
-                            </button>
-                            <button className="flex-1 hover:bg-[#111] transition-colors border-r border-[#1a1a1a] flex items-center justify-center text-sm font-medium text-neutral-400 hover:text-white">
-                                1W
-                            </button>
-                            <button className="flex-1 hover:bg-[#111] transition-colors border-r border-[#1a1a1a] flex items-center justify-center text-sm font-medium text-neutral-400 hover:text-white">
-                                1M
-                            </button>
-                            <button className="flex-1 hover:bg-[#111] transition-colors flex items-center justify-center text-sm font-medium text-neutral-400 hover:text-white">
-                                ALL
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sidebar Widgets */}
-                <div className="space-y-6">
-                    {/* Order Book Mock */}
-                    <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl flex flex-col h-[350px]">
-                        <div className="p-4 border-b border-[#1a1a1a]">
-                            <h3 className="font-semibold text-white">Order Book</h3>
-                        </div>
-                        <div className="p-4 flex-1 flex flex-col gap-1 overflow-auto text-sm font-mono">
-                            <div className="grid grid-cols-2 text-neutral-500 mb-2 text-xs pb-2 border-b border-[#222]">
-                                <span>Type</span>
-                                <span className="text-center">Price</span>
-                            </div>
-
-                            {/* Asks */}
-                            <div className="text-red-400 grid grid-cols-3 hover:bg-[#111] px-1 py-1 rounded cursor-pointer relative overflow-hidden group">
-                                <div className="absolute right-0 top-0 bottom-0 bg-red-950/40 w-[80%] z-0 rounded-l"></div>
-                                <span className="relative z-10">Ask</span>
-                                <span className="text-center relative z-10">66¢</span>
-                                <span className="text-right relative z-10">1,240</span>
-                            </div>
-                            <div className="text-red-400 grid grid-cols-3 hover:bg-[#111] px-1 py-1 rounded cursor-pointer relative overflow-hidden group">
-                                <div className="absolute right-0 top-0 bottom-0 bg-red-950/40 w-[40%] z-0 rounded-l"></div>
-                                <span className="relative z-10">Ask</span>
-                                <span className="text-center relative z-10">67¢</span>
-                                <span className="text-right relative z-10">540</span>
-                            </div>
-
-                            <div className="my-2 border-t border-dashed border-[#222] flex items-center justify-center">
-                                <span className="bg-[#050505] px-2 text-white font-bold my-[-10px] text-lg">{(yesPrice * 100).toFixed(1)}¢</span>
-                            </div>
-
-                            {/* Bids */}
-                            <div className="text-green-400 grid grid-cols-3 hover:bg-[#111] px-1 py-1 rounded cursor-pointer relative overflow-hidden group">
-                                <div className="absolute right-0 top-0 bottom-0 bg-green-950/40 w-[60%] z-0 rounded-l"></div>
-                                <span className="relative z-10">Bid</span>
-                                <span className="text-center relative z-10">64¢</span>
-                                <span className="text-right relative z-10">890</span>
-                            </div>
-                            <div className="text-green-400 grid grid-cols-3 hover:bg-[#111] px-1 py-1 rounded cursor-pointer relative overflow-hidden group">
-                                <div className="absolute right-0 top-0 bottom-0 bg-green-950/40 w-[95%] z-0 rounded-l"></div>
-                                <span className="relative z-10">Bid</span>
-                                <span className="text-center relative z-10">63¢</span>
-                                <span className="text-right relative z-10">2,100</span>
-                            </div>
-                        </div>
-
-                        <div className="p-4 border-t border-[#1a1a1a] grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => { setTradeType("YES"); setIsTradeModalOpen(true); }}
-                                className="bg-[#111] text-white hover:bg-[#1a1a1a] border border-[#222] font-semibold py-2 rounded-lg transition-colors">
-                                Buy Yes
-                            </button>
-                            <button
-                                onClick={() => { setTradeType("NO"); setIsTradeModalOpen(true); }}
-                                className="bg-[#111] text-white hover:bg-[#1a1a1a] border border-[#222] font-semibold py-2 rounded-lg transition-colors">
-                                Buy No
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Recent Activity */}
-                    <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl flex flex-col">
-                        <div className="p-4 border-b border-[#1a1a1a] flex justify-between items-center">
-                            <h3 className="font-semibold text-white">Recent Activity</h3>
-                            <Clock className="w-4 h-4 text-neutral-500" />
-                        </div>
-                        <div className="px-4 py-2 flex flex-col gap-1">
-                            {trades.length === 0 ? (
-                                <p className="text-sm text-neutral-500 py-4 px-2">No recent activity.</p>
-                            ) : trades.slice(0, 8).map((trade) => (
-                                <div key={trade.id} className="py-3 border-b border-[#1a1a1a] last:border-0 hover:bg-[#0a0a0a] transition-colors rounded px-2 -mx-2">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="text-sm font-medium text-white flex items-center gap-1">
-                                            Bought
-                                            <span className={trade.type === "YES" ? "text-green-500" : "text-red-500"}>{trade.type}</span>
-                                        </span>
-                                        <span className="text-xs text-neutral-500">Just now</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-neutral-400 truncate pr-4">{trade.marketQuestion}</span>
-                                        <span className="font-mono text-white">${trade.amount.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            {isTradeModalOpen && selectedMarket && (
-                <TradeModal
-                    isOpen={true}
-                    onClose={() => setIsTradeModalOpen(false)}
-                    market={selectedMarket}
-                    initialType={tradeType}
-                />
-            )}
+      {/* Page header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Markets Overview</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Track your positions and trade</p>
         </div>
-    );
+        <button
+          className="text-sm font-semibold px-4 py-2 rounded-xl bg-[#FF6A3D] text-white hover:bg-[#e55a30] transition-colors"
+          onClick={() => setIsModalOpen(true)}
+        >
+          New Order
+        </button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map(s => (
+          <div key={s.label} className="bg-[#121217] border border-white/8 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-muted-foreground text-xs font-medium">{s.label}</span>
+              <span className="text-muted-foreground">{s.icon}</span>
+            </div>
+            <p className="text-2xl font-bold text-white tracking-tight">{s.value}</p>
+            {s.delta && (
+              <p className={`text-xs font-medium mt-1.5 flex items-center gap-1 ${s.up ? "text-yes" : "text-no"}`}>
+                {s.up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {s.delta}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Portfolio chart */}
+        <div className="lg:col-span-2 bg-[#121217] border border-white/8 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-xs text-muted-foreground font-medium mb-1">Portfolio Balance</p>
+              <p className="text-3xl font-bold text-white">${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+              <p className="text-xs text-yes font-medium mt-1">+$284.50 (12.4%) all time</p>
+            </div>
+            <div className="flex gap-1">
+              {["1D", "1W", "1M"].map(t => (
+                <button key={t} className="px-2.5 py-1 text-xs font-medium rounded-lg text-muted-foreground hover:text-white hover:bg-white/6 transition-colors">
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="h-40">
+            <Sparkline data={PORTFOLIO_SPARK} color="#22C55E" strokeWidth={2} fillOpacity={0.15} />
+          </div>
+        </div>
+
+        {/* Market quick-trade */}
+        <div className="bg-[#121217] border border-white/8 rounded-2xl p-6 flex flex-col gap-4">
+          <p className="text-sm font-semibold text-white">Quick Trade</p>
+          <select
+            value={selectedMarketId}
+            onChange={e => setSelectedMarketId(e.target.value)}
+            className="w-full bg-background border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none cursor-pointer"
+          >
+            {markets.map(m => (
+              <option key={m.id} value={m.id}>{m.question}</option>
+            ))}
+          </select>
+
+          {selectedMarket && (
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setTradeType("YES"); setIsModalOpen(true); }}
+                  className="flex-1 py-3 rounded-xl bg-yes text-white text-sm font-bold hover:bg-[#16a34a] transition-colors"
+                >
+                  YES {yesPrice}¢
+                </button>
+                <button
+                  onClick={() => { setTradeType("NO"); setIsModalOpen(true); }}
+                  className="flex-1 py-3 rounded-xl bg-no text-white text-sm font-bold hover:bg-[#dc2626] transition-colors"
+                >
+                  NO {noPrice}¢
+                </button>
+              </div>
+              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-yes rounded-full transition-all" style={{ width: `${yesPrice}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Recent activity */}
+      <div className="bg-[#121217] border border-white/8 rounded-2xl">
+        <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-white">Recent Activity</h2>
+          <Clock className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="divide-y divide-white/5">
+          {ACTIVITY.map(a => (
+            <div key={a.id} className="px-6 py-4 flex items-center justify-between hover:bg-white/2 transition-colors">
+              <div>
+                <p className="text-sm font-medium text-white">{a.action}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{a.market}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-white">{a.amount}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{a.time}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Markets list */}
+      <div className="bg-[#121217] border border-white/8 rounded-2xl">
+        <div className="px-6 py-4 border-b border-white/8">
+          <h2 className="text-sm font-semibold text-white">All Markets</h2>
+        </div>
+        <div className="divide-y divide-white/5">
+          {markets.map(m => {
+            const pool = m.yesShares + m.noShares || 1;
+            const yes = Math.round(m.yesShares / pool * 100);
+            return (
+              <div key={m.id} className="px-6 py-4 flex items-center gap-4 hover:bg-white/2 transition-colors cursor-pointer group"
+                onClick={() => { setSelectedMarketId(m.id); setIsModalOpen(true); }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white line-clamp-1 group-hover:text-[#FF6A3D] transition-colors">{m.question}</p>
+                  <p className="text-xs text-white/70 mt-0.5 uppercase tracking-wide">{m.category}</p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="w-20">
+                    <div className="h-1 bg-white/8 rounded-full">
+                      <div className="h-full bg-yes rounded-full" style={{ width: `${yes}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                      <span>{yes}%</span><span>{100-yes}%</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button onClick={e => { e.stopPropagation(); setSelectedMarketId(m.id); setTradeType("YES"); setIsModalOpen(true); }}
+                      className="px-2.5 py-1 rounded-lg bg-yes/12 text-yes text-xs font-semibold hover:bg-yes hover:text-white transition-colors">
+                      YES
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); setSelectedMarketId(m.id); setTradeType("NO"); setIsModalOpen(true); }}
+                      className="px-2.5 py-1 rounded-lg bg-no/12 text-no text-xs font-semibold hover:bg-no hover:text-white transition-colors">
+                      NO
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {isModalOpen && selectedMarket && (
+        <TradeModal isOpen market={selectedMarket as any} initialType={tradeType} onClose={() => setIsModalOpen(false)} />
+      )}
+    </div>
+  );
 }
