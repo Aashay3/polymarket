@@ -8,8 +8,8 @@ import { TradeModal } from "@/components/TradeModal";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Comments } from "@/components/social/Comments";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { GlowButton } from "@/components/ui/GlowButton";
+import { BitsCard } from "@/components/ui/bits/BitsCard";
+import { BitsButton } from "@/components/ui/bits/BitsButton";
 
 interface MarketCardProps {
   id?: string;
@@ -62,82 +62,56 @@ export function MarketCard({ id = "sample", title, category, volume, yesPrice, n
 
   return (
     <>
-      <GlassCard
+      <BitsCard
         hover
-        className="p-6 md:p-7 flex flex-col h-full"
+        className="p-5 flex flex-col h-full group"
+        onClick={handleCardClick}
       >
-        <motion.div
-          drag={isMobile ? "x" : false}
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
-          onDragEnd={handleDragEnd}
-          animate={controls}
-          whileHover={isDesktop ? { scale: 1.0 } : {}}
-          onClick={handleCardClick}
-          className="flex flex-col h-full cursor-pointer"
-        >
-          {/* Mini Sparkline (Mobile) */}
-          {isMobile && !isExpanded && (
-            <div className="absolute right-4 top-4 w-16 h-8 opacity-40 pointer-events-none">
-              <Sparkline data={trendData} color={chartColor} strokeWidth={1.5} />
-            </div>
-          )}
-
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-2">
-              {image && (
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10 shrink-0">
-                  <img src={image} alt="" className="w-full h-full object-cover" />
-                </div>
-              )}
-              <span className="text-[12px] font-bold text-white/60 tracking-[0.08em] uppercase">{category}</span>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-1 text-muted-foreground text-xs font-medium">
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>{volume}</span>
-              </div>
-              {isMobile && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setCommentsOpen(true); }}
-                  className="flex items-center gap-1 text-primary/80 hover:text-primary bg-primary/10 px-2 py-0.5 rounded-full"
-                >
-                  <MessageSquare className="w-3 h-3" />
-                  <span className="text-[10px] font-bold">12</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <h3 className="text-[15px] md:text-[16px] font-medium text-white leading-[1.4] mb-5 line-clamp-3 w-[90%] flex-1">
-            {title}
-          </h3>
-
-          <div className="mt-auto">
-            {/* Buttons — always visible on md+, always visible on mobile (inline) */}
-            <div className="flex items-center gap-2 mt-auto">
-              <GlowButton
-                variant="yes"
-                onClick={(e) => handleButtonClick(e, "YES")}
-                className="flex-1 justify-between px-3 h-8"
-              >
-                <span className="text-xs font-bold">Yes</span><span className="text-xs opacity-90">{yesPrice}¢</span>
-              </GlowButton>
-              <GlowButton
-                variant="no"
-                onClick={(e) => handleButtonClick(e, "NO")}
-                className="flex-1 justify-between px-3 h-8"
-              >
-                <span className="text-xs font-bold">No</span><span className="text-xs opacity-90">{noPrice}¢</span>
-              </GlowButton>
-            </div>
-
-            {isMobile && (
-              <div className="flex justify-between text-[10px] text-muted-foreground font-medium uppercase tracking-widest pt-2 px-1">
-                <span>← Swipe No</span><span>Swipe Yes →</span>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            {image && (
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-white/5 border border-white/5 shrink-0">
+                <img src={image} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
               </div>
             )}
+            <div>
+              <span className="text-[11px] font-bold text-muted-foreground tracking-[0.08em] uppercase block mb-0.5">
+                {category}
+              </span>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-white/40">
+                <TrendingUp className="w-3 h-3" />
+                <span>{volume}</span>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <h3 className="text-15px md:text-16px font-semibold text-white leading-snug mb-6 flex-1">
+          {title}
+        </h3>
+
+        <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
+          <BitsButton
+            variant="yes"
+            onClick={(e) => handleButtonClick(e, "YES")}
+            className="flex-1 justify-between h-9 px-4 rounded-xl"
+          >
+            <span>Yes</span><span>{yesPrice}¢</span>
+          </BitsButton>
+          <BitsButton
+            variant="no"
+            onClick={(e) => handleButtonClick(e, "NO")}
+            className="flex-1 justify-between h-9 px-4 rounded-xl"
+          >
+            <span>No</span><span>{noPrice}¢</span>
+          </BitsButton>
+        </div>
+
+        {isMobile && !isExpanded && (
+          <div className="mt-3 flex justify-center text-[10px] font-bold text-white/20 uppercase tracking-widest">
+            Tap to expand chart
+          </div>
+        )}
 
           {/* Expandable Chart (Tablet/Desktop) */}
           <AnimatePresence>
@@ -190,8 +164,7 @@ export function MarketCard({ id = "sample", title, category, volume, yesPrice, n
               </div>
             )}
           </AnimatePresence>
-        </motion.div>
-      </GlassCard>
+      </BitsCard>
 
       {isMobile && (
         <BottomSheet isOpen={commentsOpen} onClose={() => setCommentsOpen(false)} title="Market Discussion">

@@ -28,9 +28,12 @@
   --color-yes: #22C55E;
   --color-no: #EF4444;
 
-  --radius-lg: 1rem;
-  --radius-md: 0.75rem;
-  --radius-sm: 0.5rem;
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+
+  --spacing-base: 8px;
+  --max-width-container: 1200px;
 
   /* Elevation shadows — very low opacity, professional */
   --shadow-card:   0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
@@ -69,12 +72,51 @@ body {
     -webkit-backdrop-filter: blur(8px);
   }
 
-  /* Elevation shadows */
-  .shadow-card   { box-shadow: var(--shadow-card);   }
-  .shadow-raised { box-shadow: var(--shadow-raised); }
-  .shadow-float  { box-shadow: var(--shadow-float);  }
+  .shadow-card   { box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3); }
+  .shadow-raised { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3); }
+  .shadow-float  { box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3); }
 
-  /* Micro-interactions — applied by JS className */
+  .max-container {
+    width: 100%;
+    max-width: var(--max-width-container);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .grid-responsive {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width: 768px) {
+    .grid-responsive {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .grid-responsive {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .section-gap {
+    margin-top: 32px;
+  }
+
+  .card-padding {
+    padding: 16px;
+  }
+
+  @media (min-width: 768px) {
+    .card-padding {
+      padding: 20px;
+    }
+  }
+
   .press-active:active {
     transform: scale(0.98);
   }

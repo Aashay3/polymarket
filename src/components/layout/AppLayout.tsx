@@ -11,8 +11,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
       
       <NavigationDrawer />
 
-      <main className="pt-[60px]">
-        {children}
+      <main className="pt-[60px] max-container">
+        <div className="py-8">
+          {children}
+        </div>
       </main>
     </div>
   );

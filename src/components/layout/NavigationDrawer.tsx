@@ -11,6 +11,7 @@ import {
 import { NexoraWordmark } from "@/components/ui/NexoraLogo";
 import { useDrawer } from "@/app/context/DrawerContext";
 import { useWallet } from "@/app/context/WalletContext";
+import { BitsDrawer } from "../ui/bits/BitsDrawer";
 
 const MAIN_NAV = [
   { name: "Home",        href: "/",              icon: Home },
@@ -31,78 +32,51 @@ export function NavigationDrawer() {
   const pathname = usePathname();
 
   return (
-    <AnimatePresence>
-      {isDrawerOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeDrawer}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60"
-          />
-
-          {/* Drawer */}
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 left-0 bottom-0 w-[300px] bg-card z-70 flex flex-col shadow-2xl border-r border-white/5"
-          >
-            {/* Topbar */}
-            <div className="h-[60px] flex items-center justify-between px-6 border-b border-white/5">
-              <NexoraWordmark className="scale-90 origin-left" />
-              <button 
+    <BitsDrawer 
+      isOpen={isDrawerOpen} 
+      onClose={closeDrawer} 
+      side="left"
+      title="Navigation"
+    >
+      {/* Content Swiper/Scroll area */}
+      <div className="py-6 px-3">
+        <div className="space-y-1 mb-8">
+          {MAIN_NAV.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
                 onClick={closeDrawer}
-                className="p-2 -mr-2 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+                className={`flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-semibold transition-all group
+                  ${isActive 
+                    ? "bg-primary/10 text-primary" 
+                    : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-primary" : "group-hover:text-white"}`} />
+                {item.name}
+              </Link>
+            );
+          })}
+        </div>
 
-            {/* Content Swiper/Scroll area */}
-            <div className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
-              <div className="space-y-1 mb-8">
-                {MAIN_NAV.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={closeDrawer}
-                      className={`flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-semibold transition-all group
-                        ${isActive 
-                          ? "bg-primary/10 text-primary" 
-                          : "text-muted-foreground hover:text-white hover:bg-white/5"}`}
-                    >
-                      <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-primary" : "group-hover:text-white"}`} />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
+        <div className="h-px bg-white/5 mx-3 mb-8" />
 
-              <div className="h-px bg-white/5 mx-3 mb-8" />
-
-              <div className="space-y-1 mb-8">
-                <p className="px-3 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.2em] mb-3">Support & Legal</p>
-                {SECONDARY_NAV.map((item) => (
-                  <button
-                    key={item.name}
-                    className="w-full flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-white hover:bg-white/5 transition-all group"
-                  >
-                    <item.icon className="w-5 h-5 group-hover:text-white" />
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+        <div className="space-y-1">
+          <p className="px-3 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.2em] mb-3">Support & Legal</p>
+          {SECONDARY_NAV.map((item) => (
+            <Link
+              key={item.name}
+              href="/support"
+              onClick={closeDrawer}
+              className="w-full flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-white hover:bg-white/5 transition-all group"
+            >
+              <item.icon className="w-5 h-5 group-hover:text-white" />
+              {item.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </BitsDrawer>
   );
 }

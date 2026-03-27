@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { Flame, TrendingUp, Clock, Search } from "lucide-react";
-import { GlassCard } from "@/components/ui/GlassCard";
+import { BitsCard } from "@/components/ui/bits/BitsCard";
+import { BitsButton } from "@/components/ui/bits/BitsButton";
+import { BitsTabs } from "@/components/ui/bits/BitsTabs";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { TradeModal } from "@/components/TradeModal";
 import { useWallet } from "@/app/context/WalletContext";
@@ -26,52 +28,54 @@ function MarketCard({ market, onTrade }: { market: typeof MARKETS[0]; onTrade: (
   const noProb = 100 - market.yesProb;
 
   return (
-    <GlassCard hover className="p-6 md:p-7 flex flex-col h-full">
+    <BitsCard hover className="p-5 flex flex-col h-full group" onClick={() => onTrade(market.id, "YES")}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-bold text-white/60 tracking-[0.08em] uppercase">{market.category}</span>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <span className="text-[11px] font-bold text-muted-foreground tracking-[0.08em] uppercase block mb-1">{market.category}</span>
           {market.tag === "trending"
-            ? <span className="flex items-center gap-1 text-[10px] font-semibold text-[#FF6A3D]"><Flame className="w-3 h-3" />Hot</span>
-            : <span className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground"><Clock className="w-3 h-3" />Ending</span>
+            ? <span className="flex items-center gap-1 text-[10px] font-bold text-primary"><Flame className="w-3 h-3" />Hot Now</span>
+            : <span className="flex items-center gap-1 text-[10px] font-bold text-blue-400"><Clock className="w-3 h-3" />Ending Soon</span>
           }
         </div>
-        <div className="w-16 h-7 shrink-0">
-          <Sparkline data={spark} color={market.yesProb > 50 ? "#22C55E" : "#EF4444"} strokeWidth={1.5} fillOpacity={0.1} />
+        <div className="w-16 h-8 opacity-50 group-hover:opacity-100 transition-opacity">
+          <Sparkline data={spark} color={market.yesProb > 50 ? "#22C55E" : "#EF4444"} strokeWidth={2} />
         </div>
       </div>
 
       {/* Question */}
-      <p className="text-[15px] md:text-[16px] font-medium text-white leading-[1.4] mb-6 line-clamp-2 min-h-[2.8em]">{market.question}</p>
+      <p className="text-15px md:text-16px font-semibold text-white leading-snug mb-6 flex-1">{market.question}</p>
 
       {/* Probability */}
-      <div>
-        <div className="h-1 bg-white/6 rounded-full overflow-hidden mb-2">
-          <div className="h-full bg-yes rounded-full" style={{ width: `${market.yesProb}%` }} />
+      <div className="mb-6">
+        <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-2.5">
+          <div className="h-full bg-yes" style={{ width: `${market.yesProb}%` }} />
         </div>
-        <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
-          <span className="text-yes font-bold">YES {market.yesProb}%</span>
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-widest font-medium"><TrendingUp className="w-3 h-3" />{market.volume}</span>
-          <span className="text-no font-bold">{noProb}% NO</span>
+        <div className="flex justify-between items-center text-[10px] font-bold tracking-wider">
+          <span className="text-yes uppercase">YES {market.yesProb}%</span>
+          <span className="flex items-center gap-1 text-white/20"><TrendingUp className="w-3 h-3" />{market.volume} Volume</span>
+          <span className="text-no uppercase">{noProb}% NO</span>
         </div>
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-2 mt-auto">
-        <button
-          onClick={() => onTrade(market.id, "YES")}
-          className="flex-1 h-8 rounded-[8px] bg-yes text-white text-[11px] font-bold hover:bg-[#16a34a] transition-all flex items-center justify-between px-3"
+      <div className="flex gap-2 border-t border-white/5 pt-4">
+        <BitsButton
+          variant="yes"
+          onClick={(e) => { e.stopPropagation(); onTrade(market.id, "YES"); }}
+          className="flex-1 h-9 rounded-xl flex items-center justify-between px-4"
         >
-          <span>YES</span> <span>{market.yesProb}¢</span>
-        </button>
-        <button
-          onClick={() => onTrade(market.id, "NO")}
-          className="flex-1 h-8 rounded-[8px] bg-no text-white text-[11px] font-bold hover:bg-[#dc2626] transition-all flex items-center justify-between px-3"
+          <span>Yes</span> <span>{market.yesProb}¢</span>
+        </BitsButton>
+        <BitsButton
+          variant="no"
+          onClick={(e) => { e.stopPropagation(); onTrade(market.id, "NO"); }}
+          className="flex-1 h-9 rounded-xl flex items-center justify-between px-4"
         >
-          <span>NO</span> <span>{noProb}¢</span>
-        </button>
+          <span>No</span> <span>{noProb}¢</span>
+        </BitsButton>
       </div>
-    </GlassCard>
+    </BitsCard>
   );
 }
 
@@ -87,37 +91,33 @@ export default function TrendingPage() {
   ), [activeCategory, search]);
 
   return (
-    <div className="max-w-[1248px] mx-auto px-4 md:px-6 space-y-8 pb-10">
+    <div className="space-y-8 pb-20">
 
       {/* Header */}
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-          <Flame className="w-5 h-5 text-[#FF6A3D]" /> Trending Markets
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{MARKETS.length} live markets</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+            <Flame className="w-6 h-6 text-primary" /> Trending Markets
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1.5 font-medium">{MARKETS.length} active opportunities</p>
+        </div>
+        
+        <BitsTabs 
+          tabs={CATEGORIES.map(c => ({ id: c, label: c }))} 
+          activeTab={activeCategory} 
+          onChange={setActiveCategory} 
+        />
       </div>
 
-      {/* Search + filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Search area */}
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search markets…"
-            className="w-full bg-[#121217] border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-muted-foreground outline-none focus:border-white/20 transition-colors"
+            placeholder="Search prediction markets…"
+            className="w-full bg-[#121217] border border-white/5 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-muted-foreground outline-none focus:border-primary/30 transition-colors"
           />
-        </div>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap px-3.5 py-2 rounded-xl text-sm font-medium transition-colors shrink-0 ${
-                activeCategory === cat
-                  ? "bg-[#FF6A3D] text-white"
-                  : "bg-[#121217] text-muted-foreground border border-white/8 hover:text-white hover:bg-white/5"
-              }`}>
-              {cat}
-            </button>
-          ))}
         </div>
       </div>
 

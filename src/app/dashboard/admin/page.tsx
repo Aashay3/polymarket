@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useWallet } from "@/app/context/WalletContext";
-import { Shield, CheckCircle2, Plus, Calendar, Tag, MessageSquare, AlertCircle } from "lucide-react";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { GlowButton } from "@/components/ui/GlowButton";
+import { Shield, CheckCircle2, Plus, Calendar, Tag, MessageSquare, AlertCircle, X, Activity } from "lucide-react";
+import { BitsCard } from "@/components/ui/bits/BitsCard";
+import { BitsButton } from "@/components/ui/bits/BitsButton";
+import { BitsTable, BitsTableRow, BitsTableCell } from "@/components/ui/bits/BitsTable";
 
 export default function AdminPage() {
     const { markets, resolveMarket, createNewMarket } = useWallet();
@@ -41,22 +42,22 @@ export default function AdminPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
                 <div>
-                    <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-primary" />
-                        Admin Operator Panel
+                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+                        <Shield className="w-6 h-6 text-primary" />
+                        Admin Operator
                     </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5">Manage markets and execute resolutions</p>
+                    <p className="text-sm text-muted-foreground mt-1.5 font-medium">Control center for market creation and automated resolution</p>
                 </div>
-                <GlowButton
-                    variant="primary"
+                <BitsButton
+                    variant={isCreating ? "secondary" : "primary"}
                     onClick={() => setIsCreating(!isCreating)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 h-11 px-6 rounded-xl"
                 >
-                    <Plus className="w-4 h-4" />
-                    {isCreating ? "Cancel" : "Create New Market"}
-                </GlowButton>
+                    {isCreating ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {isCreating ? "Cancel Creation" : "Create New Market"}
+                </BitsButton>
             </div>
 
             {status && (
@@ -72,9 +73,9 @@ export default function AdminPage() {
 
             {/* Create Market Form */}
             {isCreating && (
-                <GlassCard className="p-6">
-                    <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                        <Plus className="w-4 h-4" /> Create New Market
+                <BitsCard className="p-8 border-primary/20 bg-primary/2 mb-10">
+                    <h2 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
+                        <Plus className="w-5 h-5 text-primary" /> Create New Market Opportunity
                     </h2>
                     <form onSubmit={handleCreateMarket} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
@@ -123,89 +124,78 @@ export default function AdminPage() {
                             </div>
                         </div>
 
-                        <div className="md:col-span-2 flex justify-end gap-3 pt-2">
-                            <GlowButton variant="ghost" type="button" onClick={() => setIsCreating(false)}>
+                        <div className="md:col-span-2 flex justify-end gap-3 pt-6 border-t border-white/5">
+                            <BitsButton variant="ghost" type="button" onClick={() => setIsCreating(false)} className="px-6">
                                 Cancel
-                            </GlowButton>
-                            <GlowButton variant="primary" type="submit" className="px-8">
+                            </BitsButton>
+                            <BitsButton variant="primary" type="submit" className="px-10 h-11 rounded-xl">
                                 Publish Market
-                            </GlowButton>
+                            </BitsButton>
                         </div>
                     </form>
-                </GlassCard>
+                </BitsCard>
             )}
 
             {/* Markets Table */}
-            <GlassCard className="overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-white/3 border-b border-white/5">
-                            <tr>
-                                <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px]">Market</th>
-                                <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px] text-center">Status</th>
-                                <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px] text-right">Pool Size</th>
-                                <th className="px-6 py-4 font-semibold text-muted-foreground uppercase tracking-widest text-[10px] text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {markets.map((market) => {
-                                const totalShares = market.yesShares + market.noShares;
-                                return (
-                                    <tr key={market.id} className="hover:bg-white/2 transition-colors group">
-                                        <td className="px-6 py-5">
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-white font-medium line-clamp-1">{market.question}</span>
-                                                <span className="text-[10px] text-white/60 font-mono">ID: #{market.id} • {market.category}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex justify-center">
-                                                {market.status === "RESOLVED" ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/10 text-white uppercase border border-white/10">
-                                                        <CheckCircle2 className="w-3 h-3" />
-                                                        {market.winningOutcome} Wins
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary uppercase border border-primary/20">
-                                                        Active
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 text-right font-mono text-muted-foreground">
-                                            {totalShares.toLocaleString("en-US")} <span className="text-[10px]">shares</span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {market.status === "OPEN" ? (
-                                                    <>
-                                                        <GlowButton
-                                                            variant="yes"
-                                                            onClick={() => handleResolve(market.id, "YES")}
-                                                            className="px-3 py-1.5 text-[10px] h-8"
-                                                        >
-                                                            YES
-                                                        </GlowButton>
-                                                        <GlowButton
-                                                            variant="no"
-                                                            onClick={() => handleResolve(market.id, "NO")}
-                                                            className="px-3 py-1.5 text-[10px] h-8"
-                                                        >
-                                                            NO
-                                                        </GlowButton>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-[10px] text-muted-foreground/50 uppercase font-semibold">Closed</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </GlassCard>
+            <div>
+              <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Activity className="w-4 h-4 text-muted-foreground" /> Managed Markets
+              </h2>
+              <BitsTable headers={["Market", "Status", "Pool Size", "Actions"]}>
+                  {markets.map((market) => {
+                      const totalShares = market.yesShares + market.noShares;
+                      return (
+                          <BitsTableRow key={market.id}>
+                              <BitsTableCell>
+                                  <div className="flex flex-col gap-1">
+                                      <span className="text-white font-bold line-clamp-1">{market.question}</span>
+                                      <span className="text-[10px] text-muted-foreground font-bold tracking-widest uppercase">#{market.id} • {market.category}</span>
+                                  </div>
+                              </BitsTableCell>
+                              <BitsTableCell align="center">
+                                  {market.status === "RESOLVED" ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/5 text-white/60 uppercase border border-white/5">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          {market.winningOutcome} Wins
+                                      </span>
+                                  ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary uppercase border border-primary/20">
+                                          Active
+                                      </span>
+                                  )}
+                              </BitsTableCell>
+                              <BitsTableCell align="right" className="font-mono text-muted-foreground">
+                                  {totalShares.toLocaleString("en-IN")} <span className="text-[9px] uppercase font-bold text-white/20">shares</span>
+                              </BitsTableCell>
+                              <BitsTableCell align="right">
+                                  <div className="flex items-center justify-end gap-2">
+                                      {market.status === "OPEN" ? (
+                                          <>
+                                              <BitsButton
+                                                  variant="yes"
+                                                  onClick={() => handleResolve(market.id, "YES")}
+                                                  className="px-4 py-1 text-[10px] h-8 rounded-lg"
+                                              >
+                                                  YES
+                                              </BitsButton>
+                                              <BitsButton
+                                                  variant="no"
+                                                  onClick={() => handleResolve(market.id, "NO")}
+                                                  className="px-4 py-1 text-[10px] h-8 rounded-lg"
+                                              >
+                                                  NO
+                                              </BitsButton>
+                                          </>
+                                      ) : (
+                                          <span className="text-[10px] text-white/20 uppercase font-bold tracking-widest px-4">Settled</span>
+                                      )}
+                                  </div>
+                              </BitsTableCell>
+                          </BitsTableRow>
+                      );
+                  })}
+              </BitsTable>
+            </div>
         </div>
     );
 }

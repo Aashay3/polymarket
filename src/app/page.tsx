@@ -6,6 +6,9 @@ import { MarketCard } from "@/components/markets/MarketCard";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
+import { BitsTabs } from "@/components/ui/bits/BitsTabs";
+import { BitsButton } from "@/components/ui/bits/BitsButton";
+import { BitsCard } from "@/components/ui/bits/BitsCard";
 
 const CATEGORIES = ["Trending", "Breaking", "New", "Sports", "Crypto", "Politics"];
 
@@ -48,7 +51,7 @@ export default function Home() {
 
   return (
     <>
-    <div className="max-w-[1248px] mx-auto px-4 md:px-6 space-y-8 animate-in fade-in duration-500 pb-10">
+    <div className="space-y-12 animate-in fade-in duration-500 pb-20">
       
       {/* Search - Mobile/Tablet Only */}
       <div className="space-y-4 md:hidden">
@@ -56,31 +59,21 @@ export default function Home() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
           <input 
             type="text" 
-            placeholder="Search markets, politicians, crypto..." 
-            className="w-full bg-accent border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 transition-all placeholder:text-neutral-500 shadow-sm"
+            placeholder="Search markets..." 
+            className="w-full bg-[#121217] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/30 transition-all placeholder:text-neutral-500"
           />
         </div>
       </div>
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">Active Markets</h1>
-      </div>
-
-      {/* Categories Carousel */}
-      <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-        {CATEGORIES.map(category => (
-          <button
-            key={category}
-            onClick={() => setActiveTab(category)}
-            className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-semibold transition-all shadow-sm ${
-              activeTab === category 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-white'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Active Markets</h1>
+        
+        {/* Categories Tabs */}
+        <BitsTabs 
+          tabs={CATEGORIES.map(c => ({ id: c, label: c }))} 
+          activeTab={activeTab} 
+          onChange={setActiveTab} 
+        />
       </div>
 
       {/* Feed Sections */}
@@ -108,12 +101,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: sIdx * 0.1, duration: 0.4 }}
-              className="
-                flex flex-col gap-5 
-                sm:flex-row sm:overflow-x-auto sm:snap-x sm:snap-mandatory sm:pb-4 sm:-mx-4 sm:px-4 
-                lg:grid lg:grid-cols-3 lg:overflow-visible lg:snap-none lg:mx-0 lg:px-0
-                scrollbar-hide
-              "
+              className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
             >
               {section.markets.map((market) => (
                 <div 
