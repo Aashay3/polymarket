@@ -74,7 +74,7 @@ export default function PortfolioPage() {
                 ))}
 
                 {/* PnL Card (special) */}
-                <GlassCard hover glow={totalPnL >= 0 ? "subtle" : "strong"} className="p-5">
+                <GlassCard hover className="p-5">
                     <div className="flex items-center gap-2 mb-2 text-muted-foreground">
                         <TrendingUp className="w-4 h-4" />
                         <span className="text-sm font-medium">Total PnL</span>
