@@ -18,12 +18,12 @@ export function BitsButton({
 }: BitsButtonProps) {
   
   const variants = {
-    primary: "bg-primary text-white hover:bg-primary/90 shadow-sm",
+    primary: "bg-primary text-white hover:bg-primary/90",
     secondary: "bg-secondary text-white hover:bg-secondary/80 border border-white/10",
     outline: "bg-transparent border border-white/10 text-white hover:bg-white/5",
     ghost: "bg-transparent text-muted-foreground hover:text-white hover:bg-white/5",
-    yes: "bg-yes text-white hover:bg-yes/90 shadow-sm",
-    no: "bg-no text-white hover:bg-no/90 shadow-sm",
+    yes: "bg-yes text-white hover:bg-yes/90",
+    no: "bg-no text-white hover:bg-no/90",
   };
 
   const sizes = {

@@ -19,7 +19,7 @@ export function BitsCard({ children, className, hover = false, onClick }: BitsCa
       whileTap={onClick ? { scale: 0.98 } : {}}
       className={cn(
         "bg-[#121217] border border-white/8 rounded-xl overflow-hidden transition-colors",
-        hover && "hover:border-white/15 hover:shadow-lg hover:shadow-black/40",
+        hover && "hover:border-white/20",
         onClick && "cursor-pointer",
         className
       )}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search, ChevronRight, Flame, Clock, Activity } from "lucide-react";
 import { MarketCard } from "@/components/markets/MarketCard";
+import { MultiOutcomeCard } from "@/components/markets/MultiOutcomeCard";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
 import { Footer } from "@/components/layout/Footer";
 import { motion } from "framer-motion";
@@ -76,6 +77,33 @@ export default function Home() {
         />
       </div>
 
+      {/* Featured Multi-Outcome Market */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+          <Flame className="w-4 h-4 text-orange-500" /> Featured Event
+        </h2>
+        <MultiOutcomeCard 
+          id="us-forces-iran"
+          title="When will US Forces enter Iran?"
+          category="Geopolitics"
+          volume="$2.4M"
+          description="This market resolves to the date when any official branch of the United States Armed Forces enters the sovereign territory of the Islamic Republic of Iran for the purpose of military engagement, as confirmed by the DoD or White House."
+          rules="Resolution requires official confirmation from the US Department of Defense or the White House. Cyber operations, non-combatant evacuations, or unauthorized incursions do not count towards resolution."
+          outcomes={[
+            { id: "o1", label: "By March 31, 2026", probability: 12 },
+            { id: "o2", label: "By June 30, 2026", probability: 28 },
+            { id: "o3", label: "By September 30, 2026", probability: 45 },
+            { id: "o4", label: "By December 31, 2026", probability: 68 },
+            { id: "o5", label: "Not in 2026", probability: 32 }
+          ]}
+          relatedMarkets={[
+            { id: "r1", title: "Will Iran retaliate against US sanctions?", probability: 74 },
+            { id: "r2", title: "Will global oil prices exceed $110/bbl?", probability: 56 },
+            { id: "r3", title: "Will Israel launch preemptive strikes?", probability: 31 }
+          ]}
+        />
+      </section>
+
       {/* Feed Sections */}
       <div className="space-y-8 md:space-y-12">
         {SECTIONS.map((section, sIdx) => (
@@ -109,6 +137,7 @@ export default function Home() {
                   className="sm:min-w-[320px] sm:snap-center sm:max-w-sm lg:min-w-0 lg:max-w-none"
                 >
                   <MarketCard
+                    id={market.id}
                     title={market.question}
                     category={market.category}
                     volume={market.volume}
