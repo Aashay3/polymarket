@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
 
 /**
- * Edge-runtime auth middleware.
+ * Edge-runtime auth proxy (Next.js 16 renamed `middleware` → `proxy`).
  *
- * Uses ONLY auth.config.ts (no Prisma, no bcryptjs) because middleware runs
+ * Uses ONLY auth.config.ts (no Prisma, no bcryptjs) because proxy runs
  * in the Edge runtime and Node-only modules would blow up at load time.
  *
  * Rules:
@@ -13,7 +13,7 @@ import { authConfig } from "@/lib/auth.config";
  *     to /auth/signin; signed-in non-admins get kicked to / with ?error=unauthorized.
  *   - /api/admin/**        → same, but JSON 401/403 (never redirect).
  *
- * The socket.io custom server bypasses Next middleware — real-time auth is
+ * The socket.io custom server bypasses Next proxy — real-time auth is
  * handled in Phase 5 via an `io.use()` middleware.
  */
 
