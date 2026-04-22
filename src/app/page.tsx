@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Search, ChevronRight, Flame, Clock, Activity } from "lucide-react";
 import { MarketCard } from "@/components/markets/MarketCard";
 import { MultiOutcomeCard } from "@/components/markets/MultiOutcomeCard";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
 import { Footer } from "@/components/layout/Footer";
+import { SearchModal } from "@/components/SearchModal";
 import { motion } from "framer-motion";
 import { BitsTabs } from "@/components/ui/bits/BitsTabs";
-import { BitsButton } from "@/components/ui/bits/BitsButton";
-import { BitsCard } from "@/components/ui/bits/BitsCard";
 
-const CATEGORIES = ["Trending", "Breaking", "New", "Sports", "Crypto", "Politics"];
+const CATEGORIES = ["All", "Crypto", "Sports", "Politics", "Tech", "Economy"];
 
 // Grouped dummy data
 const SECTIONS = [
@@ -48,22 +48,33 @@ const SECTIONS = [
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("Trending");
+  const [activeTab, setActiveTab] = useState("All");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const filteredSections = SECTIONS
+    .map(section => ({
+      ...section,
+      markets: activeTab === "All"
+        ? section.markets
+        : section.markets.filter(m => m.category === activeTab),
+    }))
+    .filter(section => section.markets.length > 0);
 
   return (
     <>
     <div className="space-y-12 animate-in fade-in duration-500 pb-20">
-      
+
       {/* Search - Mobile/Tablet Only */}
       <div className="space-y-4 md:hidden">
-        <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(true)}
+          className="relative w-full bg-[#121217] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-neutral-500 text-left hover:border-white/10 transition-colors"
+          aria-label="Open search"
+        >
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-          <input 
-            type="text" 
-            placeholder="Search markets..." 
-            className="w-full bg-[#121217] border border-white/5 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/30 transition-all placeholder:text-neutral-500"
-          />
-        </div>
+          Search markets…
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -106,17 +117,31 @@ export default function Home() {
 
       {/* Feed Sections */}
       <div className="space-y-8 md:space-y-12">
-        {SECTIONS.map((section, sIdx) => (
+        {filteredSections.length === 0 && (
+          <div className="py-16 text-center text-muted-foreground">
+            <p className="text-sm font-medium">No markets in {activeTab}.</p>
+            <button
+              onClick={() => setActiveTab("All")}
+              className="mt-3 text-xs font-bold text-primary hover:underline uppercase tracking-wider"
+            >
+              Show all categories
+            </button>
+          </div>
+        )}
+        {filteredSections.map((section, sIdx) => (
           <div key={section.title} className="space-y-4 mt-8 first:mt-0">
-            
+
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 {section.icon}
                 {section.title}
               </h2>
-              <button className="text-xs font-semibold text-muted-foreground hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider">
+              <Link
+                href="/trending"
+                className="text-xs font-semibold text-muted-foreground hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider"
+              >
                 View All <ChevronRight className="w-3 h-3" />
-              </button>
+              </Link>
             </div>
 
             {/* 
@@ -156,6 +181,8 @@ export default function Home() {
 
       <LeaderboardSection />
       <Footer />
+
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }

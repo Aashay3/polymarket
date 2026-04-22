@@ -1,46 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, MessageSquare, Mail, Terminal } from "lucide-react";
+import { Globe, MessageSquare, Mail, Terminal, type LucideIcon } from "lucide-react";
+
+const SOCIAL_ICONS: Record<string, LucideIcon> = { Globe, MessageSquare, Mail, Terminal };
 
 const FOOTER_LINKS = [
   {
     title: "Markets",
     links: [
-      { name: "Crypto", href: "/trending?cat=Crypto" },
-      { name: "Politics", href: "/trending?cat=Politics" },
-      { name: "Sports", href: "/trending?cat=Sports" },
-      { name: "Economy", href: "/trending?cat=Economy" },
+      { name: "Trending",  href: "/trending" },
+      { name: "All Markets", href: "/dashboard/markets" },
+      { name: "Leaderboard", href: "/leaderboard" },
+      { name: "Activity", href: "/dashboard/activity" },
     ],
   },
   {
-    title: "Company",
+    title: "Account",
     links: [
-      { name: "About Us", href: "#" },
-      { name: "Careers", href: "#" },
-      { name: "Press", href: "#" },
-      { name: "Blog", href: "#" },
+      { name: "Portfolio",    href: "/portfolio" },
+      { name: "Wallet",       href: "/wallet" },
+      { name: "Profile",      href: "/profile" },
+      { name: "Settings",     href: "/settings" },
     ],
   },
   {
     title: "Support",
     links: [
-      { name: "Help Center", href: "#" },
-      { name: "Trading Guide", href: "#" },
-      { name: "API Docs", href: "#" },
-      { name: "Status", href: "#" },
+      { name: "Help Center",  href: "/support" },
+      { name: "Notifications", href: "/settings/notifications" },
+      { name: "Admin",        href: "/dashboard/admin" },
+      { name: "Status",       href: "/support" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { name: "Terms of Service", href: "#" },
-      { name: "Privacy Policy", href: "#" },
-      { name: "Cookie Policy", href: "#" },
-      { name: "Responsible Trading", href: "#" },
+      { name: "Terms of Service",  href: "/support" },
+      { name: "Privacy Policy",    href: "/support" },
+      { name: "Cookie Policy",     href: "/support" },
+      { name: "Responsible Trading", href: "/support" },
     ],
   },
 ];
+
+const SOCIAL_LINKS = [
+  { Icon: "Globe",         href: "/support",   label: "Website" },
+  { Icon: "MessageSquare", href: "/support",   label: "Community" },
+  { Icon: "Mail",          href: "mailto:hello@nexora.io", label: "Email" },
+  { Icon: "Terminal",      href: "/support",   label: "Developers" },
+] as const;
 
 export function Footer() {
   return (
@@ -81,11 +90,19 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-5 order-1 md:order-2">
-            {[Globe, MessageSquare, Mail, Terminal].map((Icon, i) => (
-              <Link key={i} href="#" className="text-muted-foreground hover:text-white transition-colors transform hover:scale-110 active:scale-95">
-                <Icon className="w-5 h-5" />
-              </Link>
-            ))}
+            {SOCIAL_LINKS.map(({ Icon, href, label }) => {
+              const IconCmp = SOCIAL_ICONS[Icon];
+              return (
+                <Link
+                  key={label}
+                  href={href}
+                  aria-label={label}
+                  className="text-muted-foreground hover:text-white transition-colors transform hover:scale-110 active:scale-95"
+                >
+                  <IconCmp className="w-5 h-5" />
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

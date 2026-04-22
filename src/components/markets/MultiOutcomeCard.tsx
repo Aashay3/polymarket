@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Info, Shield, MessageSquare, TrendingUp, ArrowRight } from "lucide-react";
+import { ChevronDown, TrendingUp } from "lucide-react";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
 
@@ -34,9 +33,6 @@ export function MultiOutcomeCard({
   id = "featured",
   title,
   outcomes,
-  description,
-  rules,
-  relatedMarkets,
   category = "Politics",
   volume = "$1.2M",
 }: MultiOutcomeCardProps) {

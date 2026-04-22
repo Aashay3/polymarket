@@ -1,10 +1,12 @@
 "use client";
 
 import { useWallet } from "@/app/context/WalletContext";
-import { Activity, Clock } from "lucide-react";
+import { Activity, Clock, History } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableRowSkeleton } from "@/components/ui/Skeleton";
 
 export default function ActivityPage() {
-    const { trades } = useWallet();
+    const { trades, isLoading } = useWallet();
 
     return (
         <div className="p-6 pb-20 max-w-[1600px] mx-auto space-y-6">
@@ -18,6 +20,20 @@ export default function ActivityPage() {
                 </div>
             </div>
 
+            {isLoading && trades.length === 0 ? (
+                <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl overflow-hidden">
+                    {Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={6} />)}
+                </div>
+            ) : trades.length === 0 ? (
+                <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl">
+                    <EmptyState
+                        icon={History}
+                        title="No trades yet"
+                        description="Live trades across the platform will appear here the moment they happen."
+                        action={{ label: "Browse markets", href: "/dashboard/markets" }}
+                    />
+                </div>
+            ) : (
             <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
@@ -32,14 +48,7 @@ export default function ActivityPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#1a1a1a]">
-                            {trades.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="px-5 py-16 text-center text-neutral-500">
-                                        No trading activity recorded yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                trades.map((trade) => {
+                            {trades.map((trade) => {
                                     const isYes = trade.type === "YES";
                                     const date = new Date(trade.timestamp);
                                     return (
@@ -67,12 +76,12 @@ export default function ActivityPage() {
                                             </td>
                                         </tr>
                                     );
-                                })
-                            )}
+                                })}
                         </tbody>
                     </table>
                 </div>
             </div>
+            )}
         </div>
     );
 }

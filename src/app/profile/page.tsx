@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { Edit2, Share2, Globe, Lock, Flame, Zap, TrendingUp, Trophy, Star, Bell, LogOut, Key, ChevronRight, Copy, Check, Target, Swords, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useWallet } from "@/app/context/WalletContext";
+import { useToast } from "@/app/context/ToastContext";
 
 const LEVELS = [
   { level: 1, name: "Novice",      xpRequired: 0     },
@@ -29,11 +31,11 @@ const NEARBY_RANKS = [
   { rank: 43, name: "MarketWizard", profit: "+$210",   isYou: false },
 ];
 
-const SETTINGS_ITEMS = [
-  { icon: <Edit2 className="w-4 h-4" />,  label: "Edit Profile",          sub: "Change name, avatar, bio" },
-  { icon: <Key className="w-4 h-4" />,    label: "Change Password",       sub: "Last changed 30 days ago" },
-  { icon: <Bell className="w-4 h-4" />,   label: "Notification Settings", sub: "Email, push, in-app" },
-  { icon: <LogOut className="w-4 h-4" />, label: "Logout",                sub: "Sign out of your account", danger: true },
+const SETTINGS_ITEMS: { icon: React.ReactNode; label: string; sub: string; href?: string; action?: "logout"; danger?: boolean }[] = [
+  { icon: <Edit2 className="w-4 h-4" />,  label: "Edit Profile",          sub: "Change name, avatar, bio",      href: "/settings" },
+  { icon: <Key className="w-4 h-4" />,    label: "Change Password",       sub: "Last changed 30 days ago",      href: "/settings" },
+  { icon: <Bell className="w-4 h-4" />,   label: "Notification Settings", sub: "Email, push, in-app",           href: "/settings/notifications" },
+  { icon: <LogOut className="w-4 h-4" />, label: "Logout",                sub: "Sign out of your account",      action: "logout", danger: true },
 ];
 
 const DAILY_PNL  = [10, -25, 40, -10, 80, 30, 60, -15, 90, 45, 20, 70];
@@ -48,6 +50,7 @@ function getLevel(xp: number) {
 
 export default function ProfilePage() {
   const { balance, myTrades } = useWallet();
+  const { toast } = useToast();
   const [isPublic,  setIsPublic]  = useState(true);
   const [copied,    setCopied]    = useState(false);
   const [chartMode, setChartMode] = useState<"daily" | "weekly">("daily");
@@ -61,7 +64,34 @@ export default function ProfilePage() {
   const sparkData  = chartMode === "daily" ? DAILY_PNL : WEEKLY_PNL;
   const sparkColor = sparkData.reduce((a, b) => a + b, 0) >= 0 ? "#22C55E" : "#EF4444";
 
-  const copyAddr = () => { setCopied(true); setTimeout(() => setCopied(false), 1800); };
+  const copyAddr = async () => {
+    try {
+      await navigator.clipboard.writeText("0x4f2a000000000000000000000000000000000c9B3");
+      setCopied(true);
+      toast({ type: "success", title: "Address copied" });
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast({ type: "error", title: "Copy failed" });
+    }
+  };
+
+  const shareProfile = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: "CryptoKing99 on NEXORA", url });
+        return;
+      } catch {
+        // fall through
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ type: "success", title: "Profile link copied" });
+    } catch {
+      toast({ type: "error", title: "Share failed" });
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-12">
@@ -93,14 +123,23 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
-            <button className="py-2 px-3.5 rounded-xl border border-white/10 bg-white/4 text-white text-xs font-semibold hover:bg-white/8 transition-colors flex items-center gap-1.5">
+            <Link
+              href="/settings"
+              className="py-2 px-3.5 rounded-xl border border-white/10 bg-white/4 text-white text-xs font-semibold hover:bg-white/8 transition-colors flex items-center gap-1.5"
+            >
               <Edit2 className="w-3.5 h-3.5" /> Edit
-            </button>
-            <button className="py-2 px-3.5 rounded-xl border border-white/10 bg-white/4 text-white text-xs font-semibold hover:bg-white/8 transition-colors flex items-center gap-1.5">
+            </Link>
+            <button
+              onClick={shareProfile}
+              className="py-2 px-3.5 rounded-xl border border-white/10 bg-white/4 text-white text-xs font-semibold hover:bg-white/8 transition-colors flex items-center gap-1.5"
+            >
               <Share2 className="w-3.5 h-3.5" /> Share
             </button>
-            <button onClick={() => setIsPublic(!isPublic)}
-              className={`py-2 px-3.5 rounded-xl border text-xs font-semibold transition-colors flex items-center gap-1.5 ${isPublic ? "bg-yes/10 border-yes/20 text-yes" : "bg-white/4 border-white/10 text-muted-foreground"}`}>
+            <button
+              onClick={() => { setIsPublic(!isPublic); toast({ type: "info", title: `Profile is now ${!isPublic ? "public" : "private"}` }); }}
+              aria-pressed={isPublic}
+              className={`py-2 px-3.5 rounded-xl border text-xs font-semibold transition-colors flex items-center gap-1.5 ${isPublic ? "bg-yes/10 border-yes/20 text-yes" : "bg-white/4 border-white/10 text-muted-foreground"}`}
+            >
               {isPublic ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
               {isPublic ? "Public" : "Private"}
             </button>
@@ -212,18 +251,33 @@ export default function ProfilePage() {
         <div className="bg-[#121217] border border-white/8 rounded-2xl p-5">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Target className="w-4 h-4 text-muted-foreground" />Settings</h3>
           <div className="divide-y divide-white/5">
-            {SETTINGS_ITEMS.map((item: any) => (
-              <button key={item.label} className={`w-full flex items-center gap-3 py-3.5 hover:bg-white/3 rounded-xl px-2 -mx-2 transition-colors text-left ${item.danger ? "text-no" : "text-muted-foreground hover:text-white"}`}>
-                <div className={`w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border ${item.danger ? "bg-no/8 border-no/15" : "bg-white/4 border-white/8"}`}>
-                  {item.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{item.sub}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 opacity-30" />
-              </button>
-            ))}
+            {SETTINGS_ITEMS.map((item) => {
+              const rowClass = `w-full flex items-center gap-3 py-3.5 hover:bg-white/3 rounded-xl px-2 -mx-2 transition-colors text-left ${item.danger ? "text-no" : "text-muted-foreground hover:text-white"}`;
+              const body = (
+                <>
+                  <div className={`w-8 h-8 shrink-0 rounded-xl flex items-center justify-center border ${item.danger ? "bg-no/8 border-no/15" : "bg-white/4 border-white/8"}`}>
+                    {item.icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.sub}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 opacity-30" />
+                </>
+              );
+              if (item.href) {
+                return <Link key={item.label} href={item.href} className={rowClass}>{body}</Link>;
+              }
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => { if (item.action === "logout") toast({ type: "info", title: "Signed out", description: "Come back soon." }); }}
+                  className={rowClass}
+                >
+                  {body}
+                </button>
+              );
+            })}
           </div>
         </div>
 

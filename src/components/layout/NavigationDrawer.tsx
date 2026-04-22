@@ -1,16 +1,12 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  X, Home, TrendingUp, PieChart, Wallet, User,
-  Settings, Bell, HelpCircle 
+import {
+  Home, TrendingUp, PieChart, Wallet, User,
+  Settings, Bell, HelpCircle
 } from "lucide-react";
-import { NexoraWordmark } from "@/components/ui/NexoraLogo";
 import { useDrawer } from "@/app/context/DrawerContext";
-import { useWallet } from "@/app/context/WalletContext";
 import { BitsDrawer } from "../ui/bits/BitsDrawer";
 
 const MAIN_NAV = [
@@ -22,9 +18,9 @@ const MAIN_NAV = [
 ];
 
 const SECONDARY_NAV = [
-  { name: "Settings",      icon: Settings },
-  { name: "Notifications", icon: Bell },
-  { name: "Help / Support", icon: HelpCircle },
+  { name: "Settings",       href: "/settings",               icon: Settings },
+  { name: "Notifications",  href: "/settings/notifications", icon: Bell },
+  { name: "Help / Support", href: "/support",                icon: HelpCircle },
 ];
 
 export function NavigationDrawer() {
@@ -67,7 +63,7 @@ export function NavigationDrawer() {
           {SECONDARY_NAV.map((item) => (
             <Link
               key={item.name}
-              href="/support"
+              href={item.href}
               onClick={closeDrawer}
               className="w-full flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-white hover:bg-white/5 transition-all group"
             >

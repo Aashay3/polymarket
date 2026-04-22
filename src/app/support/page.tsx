@@ -63,7 +63,13 @@ export default function SupportPage() {
                 <p className="text-sm font-bold text-white">Documentation</p>
                 <p className="text-[11px] text-muted-foreground font-medium">Read our full guide on trading and market logic</p>
               </div>
-              <BitsButton variant="secondary" className="ml-auto h-8 px-4 text-[11px] rounded-lg">View Docs</BitsButton>
+              <BitsButton
+                variant="secondary"
+                onClick={() => window.open("https://docs.polymarket.com/", "_blank", "noopener,noreferrer")}
+                className="ml-auto h-8 px-4 text-[11px] rounded-lg"
+              >
+                View Docs
+              </BitsButton>
             </div>
           </BitsCard>
         </div>

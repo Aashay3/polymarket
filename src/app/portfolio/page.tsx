@@ -1,20 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { TrendingUp, TrendingDown, PieChart, History, ChevronDown, X, Wallet, Activity } from "lucide-react";
+import { useState } from "react";
+import { TrendingUp, TrendingDown, PieChart, History, X, Wallet, Activity, Target } from "lucide-react";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useWallet } from "@/app/context/WalletContext";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
 import { BitsTable, BitsTableRow, BitsTableCell } from "@/components/ui/bits/BitsTable";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const PORTFOLIO_SPARK = [820, 910, 870, 950, 890, 1050, 980, 1120, 1080, 1220, 1180, 1284];
 
 export default function PortfolioPage() {
-  const { myTrades, markets, balance } = useWallet();
+  const { myTrades, markets, balance, closePosition } = useWallet();
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const holdingsMap = new Map<string, any>();
+  type Holding = {
+    marketId: string;
+    marketQuestion: string;
+    type: "YES" | "NO";
+    shares: number;
+    invested: number;
+    currentValue: number;
+    currentPrice: number;
+    avgBuyPrice: number;
+  };
+  const holdingsMap = new Map<string, Holding>();
   myTrades.forEach(trade => {
     const key = `${trade.marketId}-${trade.type}`;
     if (!holdingsMap.has(key)) {
@@ -101,8 +112,13 @@ export default function PortfolioPage() {
         </h2>
 
         {holdings.length === 0 ? (
-          <BitsCard className="p-10 text-center text-muted-foreground text-sm border-white/5 bg-white/2">
-            No active positions. Buy YES or NO to get started.
+          <BitsCard className="border-white/5 bg-white/2">
+            <EmptyState
+              icon={Target}
+              title="No active positions yet"
+              description="Pick a market and place your first YES or NO order to start building your portfolio."
+              action={{ label: "Browse markets", href: "/dashboard/markets" }}
+            />
           </BitsCard>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -146,8 +162,9 @@ export default function PortfolioPage() {
                   
                   {expanded === key && (
                     <div className="px-5 pb-5 border-t border-white/5 pt-5 animate-in slide-in-from-top-2 duration-300">
-                      <BitsButton 
+                      <BitsButton
                         variant="no"
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); closePosition(h.marketId, h.type); setExpanded(null); }}
                         className="w-full h-10 rounded-xl"
                       >
                         <X className="w-4 h-4 mr-2" />
@@ -168,25 +185,35 @@ export default function PortfolioPage() {
           <History className="w-4 h-4 text-muted-foreground" /> Trade History
           <span className="text-muted-foreground font-normal">({myTrades.length})</span>
         </h2>
-        <BitsTable headers={["Market", "Type", "Amount", "Shares"]}>
-          {myTrades.map(trade => (
-            <BitsTableRow key={trade.id}>
-              <BitsTableCell>
-                <p className="font-bold text-white line-clamp-1">{trade.marketQuestion}</p>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                  {new Date(trade.timestamp).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' })}
-                </p>
-              </BitsTableCell>
-              <BitsTableCell align="center">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${trade.type === "YES" ? "bg-yes/10 text-yes" : "bg-no/10 text-no"}`}>
-                  {trade.type}
-                </span>
-              </BitsTableCell>
-              <BitsTableCell align="right" className="font-bold">₹{trade.amount.toLocaleString()}</BitsTableCell>
-              <BitsTableCell align="right" className="text-muted-foreground font-bold">{trade.shares.toFixed(2)}</BitsTableCell>
-            </BitsTableRow>
-          ))}
-        </BitsTable>
+        {myTrades.length === 0 ? (
+          <BitsCard className="border-white/5 bg-white/2">
+            <EmptyState
+              icon={History}
+              title="No trades yet"
+              description="Your trade history will appear here once you place your first order."
+            />
+          </BitsCard>
+        ) : (
+          <BitsTable headers={["Market", "Type", "Amount", "Shares"]}>
+            {myTrades.map(trade => (
+              <BitsTableRow key={trade.id}>
+                <BitsTableCell>
+                  <p className="font-bold text-white line-clamp-1">{trade.marketQuestion}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                    {new Date(trade.timestamp).toLocaleDateString("en-IN", { day: '2-digit', month: 'short' })}
+                  </p>
+                </BitsTableCell>
+                <BitsTableCell align="center">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${trade.type === "YES" ? "bg-yes/10 text-yes" : "bg-no/10 text-no"}`}>
+                    {trade.type}
+                  </span>
+                </BitsTableCell>
+                <BitsTableCell align="right" className="font-bold">₹{trade.amount.toLocaleString()}</BitsTableCell>
+                <BitsTableCell align="right" className="text-muted-foreground font-bold">{trade.shares.toFixed(2)}</BitsTableCell>
+              </BitsTableRow>
+            ))}
+          </BitsTable>
+        )}
       </div>
     </div>
   );

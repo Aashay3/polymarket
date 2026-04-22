@@ -11,6 +11,7 @@ import { RightSidebar } from "@/components/markets/detail/RightSidebar";
 import { BitsAccordion } from "@/components/ui/bits/BitsAccordion";
 import { Footer } from "@/components/layout/Footer";
 import { HelpCircle, ArrowLeft } from "lucide-react";
+import { useWallet } from "@/app/context/WalletContext";
 
 // Mock Data - Representing a "Real" Market
 const MARKET_DATA = {
@@ -41,11 +42,13 @@ const MARKET_DATA = {
 export default function MarketDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { placeTrade } = useWallet();
   const [selectedOutcome, setSelectedOutcome] = useState(MARKET_DATA.outcomes[1]);
 
+  const marketId = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? MARKET_DATA.id;
+
   const handleTrade = (amount: number, type: "YES" | "NO") => {
-    console.log(`Executing ${type} trade of $${amount} on ${selectedOutcome.label}`);
-    // Real logic would be integrated here
+    placeTrade(marketId, type, amount);
   };
 
   return (

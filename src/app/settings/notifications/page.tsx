@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Mail, Smartphone, Shield, Info, CheckCircle2 } from "lucide-react";
+import { Mail, Smartphone, Shield, Info, CheckCircle2 } from "lucide-react";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
 

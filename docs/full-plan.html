@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NEXORA — Complete Project Plan</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.55;
+    font-size: 11pt;
+  }
+  h1 {
+    font-size: 24pt;
+    margin: 0 0 6pt;
+    padding-bottom: 8pt;
+    border-bottom: 3px solid #0b3d91;
+    color: #0b3d91;
+  }
+  h2 {
+    font-size: 16pt;
+    margin: 22pt 0 6pt;
+    color: #0b3d91;
+    padding-bottom: 3pt;
+    border-bottom: 1px solid #dde3ee;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 12pt;
+    margin: 14pt 0 4pt;
+    color: #222;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 11pt;
+    margin: 10pt 0 2pt;
+    color: #444;
+    font-weight: 600;
+  }
+  p { margin: 6pt 0; }
+  ul, ol { margin: 6pt 0 6pt 18pt; padding: 0; }
+  li { margin: 2pt 0; }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10pt;
+    background: #f3f4f6;
+    padding: 1pt 4pt;
+    border-radius: 3pt;
+  }
+  strong { color: #111; }
+  hr {
+    border: 0;
+    border-top: 1px solid #ddd;
+    margin: 18pt 0;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10pt 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 5pt 8pt;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f0f3f8; color: #0b3d91; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  blockquote {
+    margin: 8pt 0;
+    padding: 6pt 12pt;
+    border-left: 3px solid #0b3d91;
+    color: #333;
+    background: #f6f8fc;
+  }
+  .subtle { color: #666; font-style: italic; font-size: 10pt; }
+  .badge {
+    display: inline-block;
+    padding: 1pt 7pt;
+    border-radius: 10pt;
+    font-size: 9pt;
+    font-weight: 600;
+    margin-right: 4pt;
+  }
+  .badge-milestone { background: #0b3d91; color: white; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>NEXORA — Complete Project Plan</h1>
+<p class="subtle">A single guide covering where the project stands today, what's left on the frontend, the backend we need to build, and the blockchain layer on top of it. Plain English. Read top to bottom.</p>
+<p class="subtle">Last updated: 2026-04-21</p>
+
+<hr>
+
+<h2>Part 1 — Where we are today</h2>
+<p>NEXORA is a Polymarket-style prediction market — users bet "will X happen?" and get paid if they're right. The project runs on Next.js 16 with a glassmorphism "NEXORA" UI.</p>
+
+<h3>What's already built</h3>
+<ul>
+  <li>Beautiful frontend with ~17 pages (home, markets, dashboard, portfolio, leaderboard, wallet, profile, settings, etc.).</li>
+  <li>A custom <code>server.js</code> with socket.io for real-time trade updates.</li>
+  <li>A simple AMM (Automated Market Maker) formula for pricing.</li>
+  <li>An admin page that can create and resolve markets.</li>
+</ul>
+
+<h3>What's fake right now</h3>
+<ul>
+  <li>All market data is hardcoded mock data.</li>
+  <li>Wallet balances are fake numbers in a React context.</li>
+  <li>No login — users get a random ID on page load.</li>
+  <li>Data vanishes every time the server restarts.</li>
+  <li>No blockchain, no real money, no security.</li>
+</ul>
+<p><strong>In short: the UI is ~75% done, but everything behind it is a placeholder.</strong></p>
+
+<h2>Part 2 — What's left on the frontend</h2>
+<p>Most pages exist. Here's what actually needs fixing before we can call the frontend complete.</p>
+
+<h3>Bugs to fix</h3>
+<ul>
+  <li><strong>Dashboard settings tabs don't work</strong> — clicking tabs doesn't switch content.</li>
+  <li><strong>Duplicate routes</strong> — <code>/market/[id]</code> and <code>/markets/[id]</code> both exist; same with <code>/portfolio</code> and <code>/dashboard/portfolio</code>. Pick one, delete the other.</li>
+  <li><strong>Dead links</strong> — account drawer has "Transactions" and "Analytics" links that go nowhere.</li>
+</ul>
+
+<h3>Half-finished pieces</h3>
+<ul>
+  <li><strong>Comments component</strong> — visible on market pages but has no backend.</li>
+  <li><strong>Unused layout components</strong> — <code>Sidebar.tsx</code>, <code>TopNav.tsx</code>, <code>RightPanel.tsx</code> are left over; delete or wire them up.</li>
+  <li><strong>Trade modal types</strong> — uses <code>as any</code> casts that should be proper TypeScript.</li>
+</ul>
+
+<h3>Missing flows</h3>
+<ul>
+  <li><strong>Mobile wallet display</strong> — balance shows on desktop but disappears on mobile with no replacement.</li>
+  <li><strong>Dark/light mode toggle</strong> — button exists in settings but doesn't actually toggle.</li>
+  <li><strong>Search filters</strong> — only the Trending page has search; home and dashboard don't.</li>
+  <li><strong>User-facing market creation</strong> — only admins can create markets today.</li>
+</ul>
+
+<h3>Polish before launch</h3>
+<ul>
+  <li>Loading skeletons for when real data is fetching.</li>
+  <li>Empty states ("You have no positions yet — here's how to start").</li>
+  <li>Error messages + retry for failed trades.</li>
+  <li>Toast notifications when a trade confirms.</li>
+  <li>Accessibility — keyboard navigation, screen-reader labels, focus traps in modals.</li>
+</ul>
+<p><strong>Estimated time to finish frontend: 1 week of focused work, after the backend is wired in.</strong></p>
+
+<h2 class="page-break">Part 3 — Backend plan</h2>
+<p>The backend we need, in order.</p>
+
+<h3>Decisions to make first</h3>
+<p>Four questions drive everything that follows:</p>
+<ol>
+  <li><strong>Is this real money or play money?</strong> Real money means blockchain, audits, regulatory care. Play money means simpler and faster.</li>
+  <li><strong>AMM only, or add an order book?</strong> AMM is what we have and is simpler. Order book is what real Polymarket uses today, but takes 3–4x longer to build.</li>
+  <li><strong>How do users sign in?</strong> Email/password, Google/Twitter, wallet, or all of them?</li>
+  <li><strong>Heads-up on Next.js 16</strong> — it has breaking changes the AI didn't train on. We read the docs in <code>node_modules/next/dist/docs/</code> before writing routes.</li>
+</ol>
+
+<h3>Phase 1 — Give the backend a memory (~2 days)</h3>
+<p>Right now, restarting the server erases every market and trade. We fix that with a real database.</p>
+<ul>
+  <li>Use <strong>Postgres</strong> (standard reliable database) with <strong>Prisma</strong> (friendly code that talks to it).</li>
+  <li>Tables needed: Users, Markets, Positions, Trades, WalletBalance, Comments, Notifications.</li>
+  <li>Move the hardcoded starting markets into a seed script.</li>
+  <li>Rewrite the socket.io handlers to save and load from the database.</li>
+</ul>
+
+<h3>Phase 2 — Real login (~2 days)</h3>
+<p>Today, every page refresh gives you a new random identity. We fix that.</p>
+<ul>
+  <li>Use <strong>Auth.js v5</strong> (the standard Next.js auth library).</li>
+  <li>Support email+password and one OAuth option (Google or Twitter).</li>
+  <li>Lock admin actions (create market, resolve market) to admin accounts only.</li>
+  <li>New signups get a starting play-money balance (say $1000) so they can try it out.</li>
+</ul>
+
+<h3>Phase 3 — Real API (~2 days)</h3>
+<p>Replace mock endpoints with ones that actually read and write the database.</p>
+<ul>
+  <li>List markets (with search, filter by category, sort).</li>
+  <li>Get single market with its order book / pool state.</li>
+  <li>Place a trade (server validates everything and writes atomically so you can't get weird half-states).</li>
+  <li>Get my portfolio, get my activity, get the leaderboard.</li>
+  <li>Comments (post, list, reply).</li>
+  <li>Rate limiting so nobody can spam us.</li>
+</ul>
+
+<h3>Phase 4 — Fix the pricing math (~1 day)</h3>
+<p>The current formula double-counts. Pick a proper AMM:</p>
+<ul>
+  <li><strong>CPMM (Uniswap-style)</strong> — simple, has built-in slippage. Recommended.</li>
+  <li><strong>LMSR</strong> — what Polymarket originally used. Better when liquidity is thin.</li>
+</ul>
+<p>Add a small platform fee (2% is standard). <strong>Put the math in one file with real unit tests</strong> — pricing bugs = lost money.</p>
+
+<h3>Phase 5 — Real-time done right (~1 day)</h3>
+<p>Socket.io works, but right now it broadcasts everything to everyone. We fix that.</p>
+<ul>
+  <li>Each market gets its own "room" — you only get updates for markets you're watching.</li>
+  <li>Only send what changed (a new trade), not the entire state every time.</li>
+  <li>Authenticate socket connections so random people can't inject fake trades.</li>
+</ul>
+
+<h3>Phase 6 — Market lifecycle (~2 days)</h3>
+<ul>
+  <li><strong>Cron job</strong> — every minute, close any market whose end time has passed.</li>
+  <li><strong>Admin resolution flow</strong> — closed markets appear on admin page, admin picks the winner, payouts run automatically.</li>
+  <li><strong>Notifications</strong> — notify users when their trade fills, market closes, or they win.</li>
+</ul>
+
+<h3>Phase 7 — Blockchain (see Part 4 — this is big)</h3>
+
+<h3>Phase 8 — Deploy and monitor</h3>
+<ul>
+  <li><strong>Host Next.js on Vercel.</strong> It's designed for exactly this.</li>
+  <li><strong>Host <code>server.js</code> separately</strong> (Railway or Fly.io) because socket.io needs a long-running process. Alternative: swap socket.io for Pusher or Ably and stay fully on Vercel.</li>
+  <li><strong>Database</strong>: Neon or Supabase Postgres.</li>
+  <li><strong>Queues for background jobs</strong>: BullMQ + Redis (Upstash works great on serverless).</li>
+  <li><strong>Error tracking</strong>: Sentry.</li>
+  <li><strong>Logs</strong>: Axiom.</li>
+  <li><strong>Environment variables</strong>: create <code>.env.example</code> with every key someone needs to run this locally.</li>
+</ul>
+
+<h2 class="page-break">Part 4 — Blockchain &amp; smart contracts</h2>
+<p>The big upgrade: replace fake money with real money held securely by code.</p>
+
+<h3>Why add blockchain?</h3>
+<p>Right now the server holds everything. Users have to trust us:</p>
+<ul>
+  <li>Trust us not to change their balance.</li>
+  <li>Trust us not to reverse trades.</li>
+  <li>Trust us not to disappear with their money.</li>
+</ul>
+<p>Blockchain makes all of that unnecessary. Users hold their own money. A smart contract handles the bets automatically. Nobody — including us — can tamper with it.</p>
+
+<h3>What is a smart contract? (Vending machine analogy)</h3>
+<p>A vending machine is a mini-machine that follows rules: put money in, press a button, get a snack. You don't have to trust the operator because the machine does exactly what it's built to do.</p>
+<p>A smart contract is the same, but for digital money. We write the rules once, put it on the blockchain, and from then on it just runs. It can't be stopped, edited, or reversed — so we have to get it right before going live.</p>
+
+<h3>Which blockchain platform?</h3>
+<p>We need one that's cheap (for lots of trades), Ethereum-compatible (so we can reuse existing audited code), and widely used (for wallets and USDC).</p>
+<table>
+  <thead><tr><th>Chain</th><th>Trade cost</th><th>Good for us?</th></tr></thead>
+  <tbody>
+    <tr><td>Ethereum mainnet</td><td>$1–$20</td><td>No — too expensive</td></tr>
+    <tr><td><strong>Polygon</strong></td><td><strong>$0.001–$0.01</strong></td><td><strong>Yes — what real Polymarket uses</strong></td></tr>
+    <tr><td>Base</td><td>$0.01–$0.05</td><td>Second choice, Coinbase-backed</td></tr>
+    <tr><td>Arbitrum / Optimism</td><td>$0.01–$0.10</td><td>Fine, similar to Base</td></tr>
+    <tr><td>Solana / Sui / Aptos</td><td>cheap</td><td>No — different language, full rewrite</td></tr>
+  </tbody>
+</table>
+<p><strong>We pick Polygon.</strong> Same chain as real Polymarket, pennies per trade, same code works on Base / Arbitrum later if we ever want to move.</p>
+
+<h3>What language?</h3>
+<p><strong>Solidity.</strong> Standard for every Ethereum-compatible chain. We'll write ~500–800 lines total — most of the heavy lifting is already done by audited code we reuse.</p>
+
+<h3>What we build vs. what we reuse</h3>
+<p><strong>Reuse (already built by others, already audited):</strong></p>
+<ul>
+  <li><strong>USDC</strong> — the dollar-pegged stablecoin. Circle made it; we just point to their contract.</li>
+  <li><strong>Gnosis Conditional Tokens</strong> — turns a bet into YES shares and NO shares. Already on Polygon; we just call it.</li>
+  <li><strong>OpenZeppelin</strong> — safe building blocks (access control, pause switches, reentrancy guards).</li>
+</ul>
+<p><strong>Our own code (only three contracts):</strong></p>
+<ol>
+  <li><strong>AMM</strong> — a mini-machine per market. Holds YES/NO shares, quotes prices, takes a 2% fee.</li>
+  <li><strong>Factory</strong> — creates a new AMM when an admin makes a new market.</li>
+  <li><strong>Resolver</strong> — called by the admin multisig to declare the winner.</li>
+</ol>
+
+<h3>How "who won?" gets decided</h3>
+<p>Two options:</p>
+<ul>
+  <li><strong>Admin decides (simple)</strong> — an admin checks the result, clicks resolve. Fast and cheap, but users have to trust the admin.</li>
+  <li><strong>Oracle decides (decentralized)</strong> — a system called <strong>UMA Optimistic Oracle</strong> lets anyone propose an answer, with a time window for anyone to challenge. This is what real Polymarket uses today.</li>
+</ul>
+<p><strong>Plan: start with admin resolution, add UMA later.</strong> The admin isn't one person — it's a <strong>multisig wallet</strong> where 3 out of 5 trusted people must agree, so no single person can cheat.</p>
+
+<h3>Blockchain build steps</h3>
+
+<h4>B1 — Write and test contracts (1 week)</h4>
+<ul>
+  <li>Install <strong>Foundry</strong> (the modern tool for writing Solidity).</li>
+  <li>Write the AMM, Factory, and Resolver.</li>
+  <li>Test every scenario: make a market, buy, sell, resolve, claim winnings.</li>
+  <li>Deploy to <strong>Polygon Amoy</strong> (a free test network).</li>
+</ul>
+
+<h4>B2 — Connect wallets to the website (3 days)</h4>
+<ul>
+  <li>Add <strong>RainbowKit</strong> — the nice "Connect Wallet" button.</li>
+  <li>Users sign in by connecting MetaMask (or similar).</li>
+  <li>Show real USDC balance in the navbar.</li>
+  <li>Replace mock trades with real blockchain transactions.</li>
+</ul>
+
+<h4>B3 — Mirror the blockchain into our database (3 days)</h4>
+<ul>
+  <li>Reading the blockchain directly is slow. We run an <strong>indexer</strong> — a small program that watches the chain and copies data into our database.</li>
+  <li>Website reads from the database (fast), but the blockchain is the real source of truth.</li>
+  <li>Use <strong>Ponder</strong> or <strong>Envio</strong> — they're built exactly for this.</li>
+</ul>
+
+<h4>B4 — Resolution flow on chain (2 days)</h4>
+<ul>
+  <li>Admin UI generates a multisig transaction.</li>
+  <li>Once 3 of 5 admins sign, the contract pays out automatically.</li>
+  <li>Winners see a "Claim" button to collect their USDC.</li>
+</ul>
+
+<h4>B5 — Safety checks (1 week minimum)</h4>
+<ul>
+  <li>Run <strong>Slither</strong> and <strong>Mythril</strong> (automatic bug scanners).</li>
+  <li>Fuzz tests — throw random inputs at the contracts.</li>
+  <li>Put a "pause" switch on everything in case we spot an issue.</li>
+</ul>
+
+<h4>B6 — Before real money</h4>
+<ul>
+  <li><strong>Professional audit</strong> by a security firm. Costs $10k–$30k. <strong>Non-negotiable.</strong></li>
+  <li><strong>Bug bounty</strong> — pay ethical hackers to find holes first.</li>
+  <li>Only then flip to Polygon mainnet.</li>
+</ul>
+
+<h2 class="page-break">Part 5 — Full timeline</h2>
+<p>This is the honest end-to-end estimate, assuming one experienced developer working full-time.</p>
+<table>
+  <thead><tr><th>Phase</th><th>Time</th><th>What you get</th></tr></thead>
+  <tbody>
+    <tr><td>Frontend cleanup (bugs, duplicates)</td><td>2 days</td><td>Polished UI, no more mock clutter</td></tr>
+    <tr><td>Backend Phase 1 (database)</td><td>2 days</td><td>Data survives restarts</td></tr>
+    <tr><td>Backend Phase 2 (auth)</td><td>2 days</td><td>Real user accounts</td></tr>
+    <tr><td>Backend Phase 3 (API)</td><td>2 days</td><td>Real endpoints, no more mocks</td></tr>
+    <tr><td>Backend Phase 4 (fix AMM math)</td><td>1 day</td><td>Correct, tested pricing</td></tr>
+    <tr><td>Backend Phase 5 (secure real-time)</td><td>1 day</td><td>Safe, efficient socket.io</td></tr>
+    <tr><td>Backend Phase 6 (market lifecycle)</td><td>2 days</td><td>Auto-close markets, payouts</td></tr>
+    <tr><td>Frontend polish (loading, empty, errors, a11y)</td><td>3 days</td><td>Production-grade UX</td></tr>
+    <tr><td>Backend Phase 8 (deploy + monitoring)</td><td>2 days</td><td>Live on internet</td></tr>
+    <tr><td><span class="badge badge-milestone">MILESTONE</span> Paper-trading launch</td><td><strong>~3 weeks</strong></td><td><strong>Working demo with fake money</strong></td></tr>
+    <tr><td>Blockchain B1 (contracts)</td><td>1 week</td><td>Contracts on test network</td></tr>
+    <tr><td>Blockchain B2 (wallet UI)</td><td>3 days</td><td>Real wallet integration</td></tr>
+    <tr><td>Blockchain B3 (indexer)</td><td>3 days</td><td>Fast reads from on-chain data</td></tr>
+    <tr><td>Blockchain B4 (resolution)</td><td>2 days</td><td>Admin multisig flow</td></tr>
+    <tr><td>Blockchain B5 (safety)</td><td>1 week</td><td>Static analysis, fuzz tests, pause</td></tr>
+    <tr><td><span class="badge badge-milestone">MILESTONE</span> Testnet launch with real blockchain</td><td><strong>~3 weeks after paper launch</strong></td><td><strong>Full system on Polygon Amoy</strong></td></tr>
+    <tr><td>Blockchain B6 (audit + fixes)</td><td>4–6 weeks</td><td>Professional review complete</td></tr>
+    <tr><td><span class="badge badge-milestone">MILESTONE</span> Mainnet deployment</td><td>1 week</td><td><strong>Real money. Real users.</strong></td></tr>
+  </tbody>
+</table>
+<p><strong>Total: ~2–3 months to real mainnet launch.</strong></p>
+
+<h2>Part 6 — Costs</h2>
+<table>
+  <thead><tr><th>Thing</th><th>Cost</th></tr></thead>
+  <tbody>
+    <tr><td>Development (testnet, paper)</td><td>$0</td></tr>
+    <tr><td>Database (Neon/Supabase free tier)</td><td>$0 to start</td></tr>
+    <tr><td>Hosting (Vercel free tier + Railway hobby)</td><td>~$5–$10/month</td></tr>
+    <tr><td>Sentry + Axiom (free tiers)</td><td>$0</td></tr>
+    <tr><td>Professional smart-contract audit</td><td><strong>$10k–$30k one-time</strong></td></tr>
+    <tr><td>Bug bounty (optional)</td><td>$1k–$10k per real issue</td></tr>
+    <tr><td>Deploying to mainnet (gas)</td><td>~$5 one-time</td></tr>
+    <tr><td>Each user trade (gas, paid by user)</td><td>$0.001–$0.01</td></tr>
+  </tbody>
+</table>
+<p><strong>Important:</strong> if we can't afford the audit, we stay on testnet and call it a demo. Unaudited contracts with real money on mainnet is how the news stories start.</p>
+
+<h2>Part 7 — Risks and how we handle them</h2>
+<table>
+  <thead><tr><th>Risk</th><th>Our plan</th></tr></thead>
+  <tbody>
+    <tr><td>Smart contract bug loses user funds</td><td>Tests, static analysis, professional audit, pause switch</td></tr>
+    <tr><td>Admin goes rogue</td><td>3-of-5 multisig — no single admin has power</td></tr>
+    <tr><td>User loses their wallet / seed phrase</td><td>Non-custodial, can't help. Clear warnings at signup</td></tr>
+    <tr><td>Regulatory changes</td><td>Non-custodial model; geo-block countries if required</td></tr>
+    <tr><td>Polygon network has issues</td><td>Contracts are portable — can redeploy on Base or Arbitrum</td></tr>
+    <tr><td>Server goes down</td><td>Blockchain is source of truth, database is just a cache</td></tr>
+    <tr><td>Mass-spam attacks on comments/trades</td><td>Rate limiting + captcha on signup</td></tr>
+  </tbody>
+</table>
+
+<h2>Part 8 — Decisions we need from you</h2>
+<p>Before we start, confirm these:</p>
+<ol>
+  <li><strong>Real money or paper money?</strong> Real means full blockchain + audit ($10k+). Paper means ship in ~3 weeks and skip chain.</li>
+  <li><strong>AMM only or AMM + order book?</strong> AMM is 1 week, order book is 3–4.</li>
+  <li><strong>Login options</strong> — email? Google? Twitter? Wallet only? All?</li>
+  <li><strong>Chain</strong> — Polygon (confirmed) or want to consider Base?</li>
+  <li><strong>Resolution</strong> — start with admin multisig (recommended) or jump straight to UMA oracle?</li>
+  <li><strong>Audit budget</strong> — confirm we have $10k–$30k reserved, or accept staying on testnet.</li>
+</ol>
+
+<h2>Part 9 — What to do first</h2>
+<p>Whatever path we pick, the first two weeks are the same:</p>
+<ol>
+  <li><strong>Clean up frontend bugs</strong> (duplicate routes, broken tabs, dead links) — half a day.</li>
+  <li><strong>Phase 1: Database.</strong> This unblocks everything. Without it, restarting the server destroys the app.</li>
+  <li><strong>Phase 2: Auth.</strong> Real logins make everything else real.</li>
+  <li><strong>Phase 3: Real API.</strong> Replace every mock with a real endpoint.</li>
+</ol>
+<p>After that the paths diverge: either finish paper-trading launch (Phases 4–6, 8) or start blockchain (B1) in parallel with the later phases.</p>
+
+<hr>
+<p class="subtle" style="text-align: center;">End of plan.</p>
+
+</body>
+</html>

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
-import { Sparkles, Activity, PieChart, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Sparkles, Activity, PieChart, ArrowUpRight } from "lucide-react";
 import { BitsProgress } from "@/components/ui/bits/BitsProgress";
 
 export function RightSidebar() {
@@ -19,7 +20,7 @@ export function RightSidebar() {
           <Sparkles className="w-4 h-4" /> AI Analysis
         </h3>
         <p className="text-xs text-neutral-300 leading-relaxed font-medium italic">
-          "Based on recent volatility and sentiment shifts, the market is currently overpricing the NO outcome by approximately 8.4%."
+          &ldquo;Based on recent volatility and sentiment shifts, the market is currently overpricing the NO outcome by approximately 8.4%.&rdquo;
         </p>
         <div className="mt-5 pt-4 border-t border-indigo-500/20 flex justify-between items-center">
             <span className="text-[10px] font-bold text-indigo-400/60 uppercase">Confidence</span>
@@ -46,9 +47,12 @@ export function RightSidebar() {
             </div>
           ))}
         </div>
-        <button className="w-full mt-6 py-2 text-[10px] font-black text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.1em] border-t border-white/5 pt-4">
-            View All Trades
-        </button>
+        <Link
+          href="/dashboard/activity"
+          className="block text-center w-full mt-6 py-2 text-[10px] font-black text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.1em] border-t border-white/5 pt-4"
+        >
+          View All Trades
+        </Link>
       </BitsCard>
 
       {/* Sentiment */}

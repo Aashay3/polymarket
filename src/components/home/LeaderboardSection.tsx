@@ -58,7 +58,6 @@ export function LeaderboardSection() {
               </thead>
               <tbody className="divide-y divide-white/4">
                 {LEADERBOARD_DATA.map((trader, idx) => {
-                  const isTop3 = idx < 3;
                   const isPositive = trader.profit >= 0;
                   
                   return (

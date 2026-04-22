@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Trophy, TrendingUp, Medal } from "lucide-react";
+import { Trophy, Medal } from "lucide-react";
 import { motion } from "framer-motion";
 
 const LEADERBOARD_DATA = [

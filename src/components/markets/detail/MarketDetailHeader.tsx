@@ -1,7 +1,9 @@
 "use client";
 
-import { Share2, Bookmark, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { Share2, Bookmark, BookmarkCheck, TrendingUp, Check } from "lucide-react";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
+import { useToast } from "@/app/context/ToastContext";
 
 interface MarketDetailHeaderProps {
   title: string;
@@ -11,6 +13,44 @@ interface MarketDetailHeaderProps {
 }
 
 export function MarketDetailHeader({ title, category, volume, image }: MarketDetailHeaderProps) {
+  const { toast } = useToast();
+  const [bookmarked, setBookmarked] = useState(false);
+  const [following, setFollowing] = useState(false);
+
+  const handleShare = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch {
+        // User cancelled — fall through to clipboard.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ type: "success", title: "Link copied", description: "Market URL copied to your clipboard." });
+    } catch {
+      toast({ type: "error", title: "Share failed", description: "Could not copy the link." });
+    }
+  };
+
+  const toggleBookmark = () => {
+    setBookmarked((prev) => {
+      const next = !prev;
+      toast({ type: next ? "success" : "info", title: next ? "Bookmarked" : "Removed from bookmarks" });
+      return next;
+    });
+  };
+
+  const toggleFollow = () => {
+    setFollowing((prev) => {
+      const next = !prev;
+      toast({ type: next ? "success" : "info", title: next ? "Following market" : "Unfollowed", description: next ? "You'll be notified of major changes." : undefined });
+      return next;
+    });
+  };
+
   return (
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-white/5">
       <div className="flex items-start gap-5">
@@ -36,14 +76,34 @@ export function MarketDetailHeader({ title, category, volume, image }: MarketDet
       </div>
 
       <div className="flex items-center gap-2">
-        <BitsButton variant="secondary" className="w-10 h-10 p-0 rounded-xl flex items-center justify-center">
-            <Share2 className="w-4 h-4 text-white/70" />
+        <BitsButton
+          variant="secondary"
+          onClick={handleShare}
+          aria-label="Share this market"
+          className="w-10 h-10 p-0 rounded-xl flex items-center justify-center"
+        >
+          <Share2 className="w-4 h-4 text-white/70" />
         </BitsButton>
-        <BitsButton variant="secondary" className="w-10 h-10 p-0 rounded-xl flex items-center justify-center">
-            <Bookmark className="w-4 h-4 text-white/70" />
+        <BitsButton
+          variant="secondary"
+          onClick={toggleBookmark}
+          aria-label={bookmarked ? "Remove bookmark" : "Bookmark market"}
+          aria-pressed={bookmarked}
+          className="w-10 h-10 p-0 rounded-xl flex items-center justify-center"
+        >
+          {bookmarked ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4 text-white/70" />}
         </BitsButton>
-        <BitsButton variant="primary" className="h-10 px-6 rounded-xl font-bold text-xs uppercase tracking-widest hidden md:flex">
-            Follow Market
+        <BitsButton
+          variant={following ? "secondary" : "primary"}
+          onClick={toggleFollow}
+          aria-pressed={following}
+          className="h-10 px-6 rounded-xl font-bold text-xs uppercase tracking-widest hidden md:flex"
+        >
+          {following ? (
+            <span className="inline-flex items-center gap-1.5"><Check className="w-3.5 h-3.5" /> Following</span>
+          ) : (
+            "Follow Market"
+          )}
         </BitsButton>
       </div>
     </div>

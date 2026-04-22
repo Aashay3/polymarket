@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NEXORA Blockchain Plan</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.55;
+    font-size: 11pt;
+    max-width: 100%;
+  }
+  h1 {
+    font-size: 22pt;
+    margin: 0 0 8pt;
+    padding-bottom: 8pt;
+    border-bottom: 2px solid #111;
+  }
+  h2 {
+    font-size: 15pt;
+    margin: 22pt 0 6pt;
+    color: #0b3d91;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 12pt;
+    margin: 14pt 0 4pt;
+    color: #222;
+    page-break-after: avoid;
+  }
+  p { margin: 6pt 0; }
+  ul, ol { margin: 6pt 0 6pt 18pt; padding: 0; }
+  li { margin: 2pt 0; }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10pt;
+    background: #f3f4f6;
+    padding: 1pt 4pt;
+    border-radius: 3pt;
+  }
+  strong { color: #111; }
+  hr {
+    border: 0;
+    border-top: 1px solid #ddd;
+    margin: 18pt 0;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10pt 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 5pt 8pt;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f0f3f8; color: #0b3d91; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  blockquote {
+    margin: 8pt 0;
+    padding: 4pt 12pt;
+    border-left: 3px solid #0b3d91;
+    color: #444;
+    background: #f8f9fb;
+  }
+  .subtle { color: #666; font-style: italic; }
+  .tag {
+    display: inline-block;
+    background: #eef2ff;
+    color: #0b3d91;
+    padding: 1pt 6pt;
+    border-radius: 3pt;
+    font-size: 9pt;
+    margin-right: 4pt;
+  }
+</style>
+</head>
+<body>
+
+<h1>NEXORA Blockchain Plan <span class="subtle" style="font-size:12pt; font-weight:normal;">(Plain English)</span></h1>
+<p>A simple guide to how we add blockchain and smart contracts to NEXORA. No jargon walls — read top to bottom.</p>
+
+<hr>
+
+<h2>1. What are we actually building?</h2>
+<p>NEXORA is a prediction market — people bet on "will X happen?" with real money. Right now, everything is fake: mock prices, fake balances, data lost on server restart.</p>
+<p>We want to make it real. That means:</p>
+<ul>
+  <li>Users hold their own money (no "trust us, we have your funds").</li>
+  <li>Trades and payouts happen automatically by code, not by us pressing buttons.</li>
+  <li>Nobody — including us — can secretly change balances or reverse trades.</li>
+</ul>
+<p>Blockchain gives us those properties for free. Smart contracts are how we write the rules.</p>
+
+<h2>2. What is a smart contract? (Easy version)</h2>
+<p>Think of a <strong>vending machine</strong>.</p>
+<ul>
+  <li>You put money in.</li>
+  <li>You press a button.</li>
+  <li>It gives you a snack.</li>
+</ul>
+<p>Nobody has to trust the vending machine operator. The machine just follows its rules. If the rules are written correctly, nobody can cheat.</p>
+<p>A smart contract is the same thing, but for money and digital assets. We write a program, put it on the blockchain, and from then on:</p>
+<ul>
+  <li>Users send money (USDC) into it.</li>
+  <li>It follows the rules we wrote.</li>
+  <li>When a market resolves, it automatically pays the winners.</li>
+</ul>
+<p>We can't "turn it off" or "refund someone." Whatever we code is what happens. This is powerful — and dangerous if we mess up. That's why we test a lot and get an audit before real money.</p>
+
+<h2>3. What is a "platform"?</h2>
+<p>A <strong>blockchain platform</strong> is the computer network the contract runs on. Different platforms have different trade-offs: some are cheap, some are fast, some are very secure, some use a different programming language.</p>
+<p>For this project, the choice narrows down quickly.</p>
+
+<h3>The short version</h3>
+<ul>
+  <li><strong>Ethereum</strong> — most trusted, but every trade costs $1–$20. Too expensive for a betting site.</li>
+  <li><strong>Polygon</strong> — runs Ethereum-style contracts, but trades cost less than a cent. This is what Polymarket itself uses.</li>
+  <li><strong>Base, Arbitrum, Optimism</strong> — also cheap, also Ethereum-style. Fine backups.</li>
+  <li><strong>Solana, Sui, Aptos</strong> — cheap and fast, but use a different programming language. We'd have to rewrite everything from scratch.</li>
+</ul>
+
+<h3>Our pick: Polygon</h3>
+<p>Three reasons:</p>
+<ol>
+  <li><strong>Cheapest user experience.</strong> A trade costs pennies, not dollars.</li>
+  <li><strong>Same platform as real Polymarket.</strong> We can reuse their tools and audited code.</li>
+  <li><strong>Ethereum-compatible.</strong> The code we write works on Base / Arbitrum / Optimism too if we ever want to move.</li>
+</ol>
+<p>We start on <strong>Polygon Amoy</strong> (a free "testnet" for practice) and only move to real money once it's safe.</p>
+
+<h2>4. What language will we write contracts in?</h2>
+<p><strong>Solidity.</strong> It's the most popular language for smart contracts and the only one that matters for Ethereum-style chains. Looks a bit like JavaScript. ~500–800 lines of new Solidity for this whole project — most of the hard parts are already written by other teams.</p>
+
+<h2>5. What do we build vs. reuse?</h2>
+<p>Writing smart contracts from scratch is how people lose millions of dollars. So we reuse as much audited code as possible.</p>
+
+<h3>Stuff we reuse (don't build)</h3>
+<ul>
+  <li><strong>USDC (the money).</strong> Circle already made it. We just point to their address.</li>
+  <li><strong>Conditional Tokens</strong> — the system that turns a bet into "YES shares" and "NO shares." Built by a company called Gnosis. Already deployed on Polygon. We just use it.</li>
+  <li><strong>OpenZeppelin</strong> — a library of safe building blocks (access control, pause switches, etc.).</li>
+</ul>
+
+<h3>Stuff we build (our code)</h3>
+<ol>
+  <li><strong>Market AMM (Automated Market Maker)</strong> — a little vending machine per market. Holds YES and NO shares, quotes prices, takes a small fee.</li>
+  <li><strong>Factory</strong> — a contract that creates a new AMM whenever an admin makes a new market.</li>
+  <li><strong>Resolver</strong> — the contract an admin calls to declare a winner. Later, this can be replaced by an oracle (more on that below).</li>
+</ol>
+<p>That's it. Three contracts. Everything else is reused.</p>
+
+<h2>6. How resolution works (the "who won?" problem)</h2>
+<p>The hardest part of a prediction market is deciding who won. If we bet on "Will team X win?" something has to officially say yes or no.</p>
+<p>Two options:</p>
+
+<h3>Option A: Admin decides (simple)</h3>
+<p>An admin checks the result, logs in, and marks the market resolved. Fast, cheap, but users have to trust the admin.</p>
+
+<h3>Option B: Oracle decides (decentralized)</h3>
+<p>A system called <strong>UMA Optimistic Oracle</strong> (what real Polymarket uses) lets anyone propose an answer, and anyone can challenge it within a time window. If nobody challenges, the answer sticks. Slower, but trustless.</p>
+<p><strong>Our plan: start with Option A (admin), add Option B later.</strong> Using a <strong>multisig wallet</strong> — meaning 3 out of 5 trusted people must agree — so one admin can't rug anyone.</p>
+
+<h2>7. The full journey (step by step)</h2>
+
+<h3>Step 1 — Set up the contract project (1 week)</h3>
+<ul>
+  <li>Install <strong>Foundry</strong> (a popular tool for writing and testing Solidity).</li>
+  <li>Write the three contracts above.</li>
+  <li>Write tests for every scenario (make a market, buy YES, sell, resolve, pay winners).</li>
+  <li>Deploy to Polygon Amoy (testnet, free).</li>
+</ul>
+
+<h3>Step 2 — Connect wallet to the website (3 days)</h3>
+<ul>
+  <li>Add <strong>RainbowKit</strong> to the site — the pretty "Connect Wallet" button.</li>
+  <li>Users connect MetaMask (or similar).</li>
+  <li>Show their real USDC balance in the navbar.</li>
+  <li>Replace mock trades with real blockchain transactions.</li>
+</ul>
+
+<h3>Step 3 — Mirror the blockchain into our database (3 days)</h3>
+<ul>
+  <li>Reading straight from the blockchain is slow. So we run an <strong>indexer</strong> — a small program that watches the chain and copies everything into our normal database.</li>
+  <li>That way the website stays fast, while the blockchain stays the source of truth.</li>
+  <li>We'll use a tool called <strong>Ponder</strong> or <strong>Envio</strong> for this (built exactly for the job).</li>
+</ul>
+
+<h3>Step 4 — Resolution flow (2 days)</h3>
+<ul>
+  <li>Admin opens the admin page, picks the winning outcome.</li>
+  <li>The page helps them sign a multisig transaction.</li>
+  <li>Once 3 of 5 admins sign, the contract pays out.</li>
+  <li>Winners see a "Claim" button and collect their USDC.</li>
+</ul>
+
+<h3>Step 5 — Safety checks (1 week minimum)</h3>
+<ul>
+  <li>Run automated tools (<strong>Slither</strong>, <strong>Mythril</strong>) that look for common bugs.</li>
+  <li>Fuzz tests — throw random inputs at contracts and see what breaks.</li>
+  <li>Put a "pause" switch on everything in case we spot an issue.</li>
+</ul>
+
+<h3>Step 6 — Before real money</h3>
+<ul>
+  <li><strong>Professional audit</strong> by a security firm. Costs $10k–$30k. <strong>Non-negotiable</strong> if real funds are involved.</li>
+  <li><strong>Bug bounty</strong> — pay hackers to tell us about holes before black hats find them.</li>
+  <li>Only then flip to Polygon mainnet.</li>
+</ul>
+
+<h2>8. Timeline summary</h2>
+<table>
+  <thead>
+    <tr><th>Phase</th><th>Time</th><th>What ships</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Testnet demo</td><td>3–4 weeks</td><td>Fully working prediction market on Polygon Amoy with fake money</td></tr>
+    <tr><td>Audit + fixes</td><td>4–6 weeks</td><td>Professional review, all issues fixed</td></tr>
+    <tr><td>Mainnet launch</td><td>1 week</td><td>Real USDC, real money, real users</td></tr>
+  </tbody>
+</table>
+<p><strong>Total: ~2–3 months to real mainnet launch.</strong></p>
+
+<h2>9. Costs</h2>
+<table>
+  <thead>
+    <tr><th>Thing</th><th>Cost</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Testnet development</td><td>$0 (free fake tokens from a faucet)</td></tr>
+    <tr><td>Deploying to mainnet</td><td>~$5 in gas fees</td></tr>
+    <tr><td>Each user trade</td><td>$0.001–$0.01 in gas (user pays)</td></tr>
+    <tr><td>Professional audit</td><td>$10k–$30k</td></tr>
+    <tr><td>Optional bug bounty</td><td>$1k–$10k per issue found</td></tr>
+  </tbody>
+</table>
+<p><strong>If we skip the audit, we stay on testnet and call it a demo.</strong> Putting unaudited contracts on mainnet with real money = how the news stories start.</p>
+
+<h2>10. Risks and how we handle them</h2>
+<table>
+  <thead>
+    <tr><th>Risk</th><th>Our plan</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Bug in our contract loses funds</td><td>Audit, tests, pause switch, start small</td></tr>
+    <tr><td>Admin goes rogue</td><td>Multisig (3-of-5), public transparency of every action</td></tr>
+    <tr><td>User loses wallet</td><td>We can't help — they're non-custodial. We show a clear warning at signup</td></tr>
+    <tr><td>Regulation changes</td><td>We're non-custodial and may need to geo-block certain countries</td></tr>
+    <tr><td>Polygon has problems</td><td>Contracts are portable — we can redeploy on Base or Arbitrum</td></tr>
+  </tbody>
+</table>
+
+<h2>11. What changes on the website?</h2>
+<table>
+  <thead>
+    <tr><th>Old (mock)</th><th>New (blockchain)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Fake balance in <code>WalletContext</code></td><td>Real USDC balance read from chain</td></tr>
+    <tr><td>Click "Trade" → server updates a number</td><td>Click "Trade" → wallet popup → user signs → blockchain confirms</td></tr>
+    <tr><td>Admin resolves by clicking a button</td><td>Admin resolves via multisig → contract pays automatically</td></tr>
+    <tr><td>Email/password login</td><td>"Sign in with wallet" (Sign-In With Ethereum)</td></tr>
+    <tr><td>Data lost on restart</td><td>Data permanent, on-chain</td></tr>
+  </tbody>
+</table>
+<p>Most of the UI stays the same. The plumbing underneath changes.</p>
+
+<h2>12. The next concrete step</h2>
+<p>If this all sounds right, the first thing to do is:</p>
+<blockquote>
+  Set up the <code>contracts/</code> folder with Foundry and write the factory + AMM + resolver with tests. Deploy to Polygon Amoy. End-to-end happy path: create a market → buy shares → resolve → winners claim.
+</blockquote>
+<p>Once that works on testnet, everything else (website integration, indexer, admin flow) is ordinary work.</p>
+
+<hr>
+<p class="subtle">Last updated: 2026-04-21</p>
+
+</body>
+</html>

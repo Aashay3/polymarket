@@ -2,15 +2,22 @@
 
 import { useState } from "react";
 import { X, CheckCircle2 } from "lucide-react";
-import { useWallet, Market } from "@/app/context/WalletContext";
+import { useWallet } from "@/app/context/WalletContext";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlowButton } from "@/components/ui/GlowButton";
 
+export interface TradeModalMarket {
+    id: string;
+    question: string;
+    yesShares: number;
+    noShares: number;
+}
+
 interface TradeModalProps {
     isOpen: boolean;
     onClose: () => void;
-    market: Market;
+    market: TradeModalMarket;
     initialType: "YES" | "NO";
 }
 

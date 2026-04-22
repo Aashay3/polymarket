@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 const DUMMY_COMMENTS = [
   { id: 1, user: "0xWhale", text: "This is a sure thing! Accumulating YES.", time: "2m ago" },

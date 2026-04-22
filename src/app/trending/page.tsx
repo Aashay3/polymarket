@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Flame, TrendingUp, Clock, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Flame, TrendingUp, Clock, Search, SearchX } from "lucide-react";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
 import { BitsTabs } from "@/components/ui/bits/BitsTabs";
 import { Sparkline } from "@/components/ui/Sparkline";
-import { TradeModal } from "@/components/TradeModal";
-import { useWallet } from "@/app/context/WalletContext";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const CATEGORIES = ["All", "Crypto", "Sports", "Politics", "Tech", "Economy"];
 
@@ -23,8 +23,23 @@ const MARKETS = [
   { id: "t9", question: "2026 Midterms: Democrats win the House?",     category: "Politics", yesProb: 48, volume: "$12.4M",tag: "trending", yesShares: 48, noShares: 52 },
 ];
 
+// Deterministic pseudo-random sparkline so renders are pure and stable.
+function sparkForId(id: string): number[] {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Array.from({ length: 20 }, () => {
+    h ^= h << 13;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    return 20 + (Math.abs(h) % 1000) / 1000 * 60;
+  });
+}
+
 function MarketCard({ market, onTrade }: { market: typeof MARKETS[0]; onTrade: (id: string, type: "YES" | "NO") => void }) {
-  const spark = useMemo(() => Array.from({ length: 20 }, () => 20 + Math.random() * 60), []);
+  const spark = useMemo(() => sparkForId(market.id), [market.id]);
   const noProb = 100 - market.yesProb;
 
   return (
@@ -80,15 +95,18 @@ function MarketCard({ market, onTrade }: { market: typeof MARKETS[0]; onTrade: (
 }
 
 export default function TrendingPage() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
-  const [modal, setModal] = useState<{ market: typeof MARKETS[0]; type: "YES" | "NO" } | null>(null);
-  const { markets: walletMarkets } = useWallet();
 
   const filtered = useMemo(() => MARKETS.filter(m =>
     (activeCategory === "All" || m.category === activeCategory) &&
     (!search || m.question.toLowerCase().includes(search.toLowerCase()))
   ), [activeCategory, search]);
+
+  const openMarket = (id: string, type?: "YES" | "NO") => {
+    router.push(type ? `/market/${id}?trade=${type}` : `/market/${id}`);
+  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -122,17 +140,19 @@ export default function TrendingPage() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filtered.map(m => (
-          <MarketCard key={m.id} market={m} onTrade={(id, type) => setModal({ market: MARKETS.find(x => x.id === id)!, type })} />
-        ))}
-        {filtered.length === 0 && (
-          <div className="col-span-full py-20 text-center text-muted-foreground text-sm">No markets found.</div>
-        )}
-      </div>
-
-      {modal && (
-        <TradeModal isOpen market={modal.market as any} initialType={modal.type} onClose={() => setModal(null)} />
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={SearchX}
+          title="No markets match your filters"
+          description="Try a different category or clear your search."
+          action={search ? { label: "Clear search", onClick: () => setSearch("") } : { label: "Reset filters", onClick: () => setActiveCategory("All") }}
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map(m => (
+            <MarketCard key={m.id} market={m} onTrade={openMarket} />
+          ))}
+        </div>
       )}
     </div>
   );

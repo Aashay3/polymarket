@@ -194,7 +194,7 @@ export default function DashboardPage() {
       </div>
 
       {isModalOpen && selectedMarket && (
-        <TradeModal isOpen market={selectedMarket as any} initialType={tradeType} onClose={() => setIsModalOpen(false)} />
+        <TradeModal isOpen market={selectedMarket} initialType={tradeType} onClose={() => setIsModalOpen(false)} />
       )}
     </div>
   );

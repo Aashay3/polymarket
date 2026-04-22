@@ -1,0 +1,365 @@
+// NEXORA — Prisma schema
+// Decimals used everywhere money touches. NEVER floats for money.
+// Every financial write happens in a $transaction() block in application code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────────────────────────
+// USERS & AUTH
+// ──────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String?   @unique
+  emailVerified  DateTime?
+  name           String?
+  image          String?
+  role           Role      @default(USER)
+  // Username is optional but unique when set (no name collisions at scale)
+  username       String?   @unique
+  // Auth.js needs passwordHash when using Credentials
+  passwordHash   String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  wallets        Wallet[]
+  sessions       Session[]
+  accounts       Account[]
+  balance        Balance?
+  positions      Position[]
+  trades         Trade[]
+  comments       Comment[]
+  commentLikes   CommentLike[]
+  notifications  Notification[]
+  bookmarks      Bookmark[]
+  follows        Follow[]
+  createdMarkets Market[]  @relation("MarketCreatedBy")
+  resolvedMarkets Market[] @relation("MarketResolvedBy")
+  auditLogs      AuditLog[]
+
+  @@index([createdAt])
+}
+
+// Auth.js standard tables (OAuth providers)
+model Account {
+  id                 String   @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Wallet addresses linked to a user (SIWE — Sign-In With Ethereum)
+model Wallet {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  chainId   Int      @default(137) // Polygon mainnet default; 80002 = Amoy testnet
+  userId    String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([address])
+}
+
+// ──────────────────────────────────────────────────────────────
+// MARKETS
+// ──────────────────────────────────────────────────────────────
+
+enum MarketStatus {
+  OPEN
+  CLOSED      // Trading halted, awaiting resolution
+  RESOLVED    // Winner declared
+  VOIDED      // Market voided, all users refunded
+}
+
+enum Outcome {
+  YES
+  NO
+}
+
+model Market {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  question        String
+  description     String        @db.Text
+  rules           String        @db.Text
+  category        String
+  imageUrl        String?
+
+  // AMM pool state — Decimal(38, 18) for high-precision math
+  // Initial liquidity seeded on creation; server-side AMM is authoritative off-chain,
+  // mirrored on-chain post-Phase-B
+  yesShares       Decimal       @db.Decimal(38, 18)
+  noShares        Decimal       @db.Decimal(38, 18)
+  feeBps          Int           @default(200) // 2.00% default
+
+  // Lifecycle
+  status          MarketStatus  @default(OPEN)
+  winningOutcome  Outcome?
+  resolutionNote  String?       @db.Text
+  endTime         DateTime
+  resolvedAt      DateTime?
+
+  // Admin audit
+  createdById     String?
+  createdBy       User?         @relation("MarketCreatedBy", fields: [createdById], references: [id])
+  resolvedById    String?
+  resolvedBy      User?         @relation("MarketResolvedBy", fields: [resolvedById], references: [id])
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  positions       Position[]
+  trades          Trade[]
+  comments        Comment[]
+  bookmarks       Bookmark[]
+  follows         Follow[]
+
+  @@index([status, endTime])
+  @@index([category, status])
+  @@index([slug])
+}
+
+// ──────────────────────────────────────────────────────────────
+// POSITIONS & TRADES
+// ──────────────────────────────────────────────────────────────
+
+model Position {
+  id          String   @id @default(cuid())
+  userId      String
+  marketId    String
+  outcome     Outcome
+  shares      Decimal  @db.Decimal(38, 18)
+  avgPrice    Decimal  @db.Decimal(10, 8)       // 0.00000000 - 1.00000000
+  costBasis   Decimal  @db.Decimal(20, 6)       // USDC, 6 decimals
+  settled     Boolean  @default(false)
+  settledAt   DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market      Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, marketId, outcome])
+  @@index([userId])
+  @@index([marketId])
+}
+
+enum TradeSide {
+  BUY
+  SELL       // Closing out a position
+}
+
+model Trade {
+  id          String    @id @default(cuid())
+  userId      String
+  marketId    String
+  outcome     Outcome
+  side        TradeSide
+  shares      Decimal   @db.Decimal(38, 18)
+  pricePerShare Decimal @db.Decimal(10, 8)
+  amount      Decimal   @db.Decimal(20, 6)  // USDC gross, before fee
+  fee         Decimal   @db.Decimal(20, 6)
+  netAmount   Decimal   @db.Decimal(20, 6)  // amount - fee
+
+  // For on-chain traceability later
+  txHash      String?   @unique
+  blockNumber Int?
+
+  user        User      @relation(fields: [userId], references: [id])
+  market      Market    @relation(fields: [marketId], references: [id])
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([marketId, createdAt])
+  @@index([createdAt])
+}
+
+// ──────────────────────────────────────────────────────────────
+// BALANCES
+// ──────────────────────────────────────────────────────────────
+
+model Balance {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  // "available" = free to trade. "locked" = reserved for open orders (future CLOB).
+  available    Decimal  @db.Decimal(20, 6) @default(0)
+  locked       Decimal  @db.Decimal(20, 6) @default(0)
+  // Lifetime deposit/withdraw tracking
+  totalDeposited   Decimal @db.Decimal(20, 6) @default(0)
+  totalWithdrawn   Decimal @db.Decimal(20, 6) @default(0)
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────────────────────
+// SOCIAL
+// ──────────────────────────────────────────────────────────────
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  parentId  String?
+  body      String   @db.Text
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market    Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Comment[] @relation("CommentReplies")
+  likes     CommentLike[]
+
+  createdAt DateTime @default(now())
+
+  @@index([marketId, createdAt])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model CommentLike {
+  userId    String
+  commentId String
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, commentId])
+  @@index([commentId])
+}
+
+model Bookmark {
+  userId    String
+  marketId  String
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market    Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, marketId])
+  @@index([userId])
+}
+
+model Follow {
+  userId    String
+  marketId  String
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market    Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, marketId])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ──────────────────────────────────────────────────────────────
+
+enum NotificationType {
+  TRADE_FILLED
+  MARKET_CLOSING
+  MARKET_RESOLVED
+  POSITION_WON
+  COMMENT_REPLY
+  MARKET_UPDATE
+  SYSTEM
+}
+
+model Notification {
+  id        String            @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String            @db.Text
+  data      Json?
+  readAt    DateTime?
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime          @default(now())
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+// ──────────────────────────────────────────────────────────────
+// AUDIT LOG
+// Every admin / financial action goes here. Compliance requirement.
+// ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String   // "market.create", "market.resolve", "trade.buy", "admin.login", etc.
+  targetType String? // "Market", "User", ...
+  targetId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}

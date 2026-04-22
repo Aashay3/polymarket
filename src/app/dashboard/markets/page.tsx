@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Search } from "lucide-react";
+import { Clock, Search, SearchX } from "lucide-react";
 import { TradeModal } from "@/components/TradeModal";
 import { useWallet, Market } from "@/app/context/WalletContext";
+import { MarketCardSkeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export default function MarketsPage() {
-    const { markets } = useWallet();
+    const { markets, isLoading } = useWallet();
     const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
     const [tradeType, setTradeType] = useState<"YES" | "NO">("YES");
     const [searchQuery, setSearchQuery] = useState("");
@@ -33,6 +35,18 @@ export default function MarketsPage() {
                 </div>
             </div>
 
+            {isLoading && markets.length === 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => <MarketCardSkeleton key={i} />)}
+                </div>
+            ) : filteredMarkets.length === 0 ? (
+                <EmptyState
+                    icon={SearchX}
+                    title={searchQuery ? "No markets match your search" : "No markets yet"}
+                    description={searchQuery ? "Try a different search term or clear the filter." : "Markets will appear here once they're created."}
+                    action={searchQuery ? { label: "Clear search", onClick: () => setSearchQuery("") } : undefined}
+                />
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredMarkets.map((market) => {
                     const endDate = new Date(market.endTime).toLocaleDateString("en-US", {
@@ -92,6 +106,7 @@ export default function MarketsPage() {
                     );
                 })}
             </div>
+            )}
 
             {selectedMarket && (
                 <TradeModal
