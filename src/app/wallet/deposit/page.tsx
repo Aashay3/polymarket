@@ -26,10 +26,20 @@ interface DepositRow {
   confirmedAt: string | null;
 }
 
+interface ApiFailure extends Error {
+  code?: string;
+  status?: number;
+}
+
 async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(path);
-  const body = await res.json();
-  if (!body.ok) throw new Error(body?.error?.message ?? "Request failed");
+  const body = await res.json().catch(() => ({ ok: false, error: { message: "Bad response" } }));
+  if (!body.ok) {
+    const e: ApiFailure = new Error(body?.error?.message ?? `HTTP ${res.status}`);
+    e.code = body?.error?.code;
+    e.status = res.status;
+    throw e;
+  }
   return body.data as T;
 }
 
@@ -69,17 +79,41 @@ export default function DepositPage() {
   const [txHash, setTxHash] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [notConfigured, setNotConfigured] = useState(false);
+  const [needsSignin, setNeedsSignin] = useState(false);
 
   const refresh = useCallback(async () => {
-    try {
-      const [addr, list] = await Promise.all([
-        apiGet<DepositAddress>("/api/deposits/address"),
-        apiGet<{ deposits: DepositRow[] }>("/api/deposits?limit=20"),
-      ]);
-      setMeta(addr);
-      setDeposits(list.deposits);
-    } catch (e) {
-      toast({ type: "error", title: "Could not load deposit info", description: e instanceof Error ? e.message : undefined });
+    // Settle each request independently so one failure doesn't kill the
+    // other. The address endpoint is public; the history endpoint needs
+    // auth. They fail for different reasons on a fresh setup.
+    const [addrRes, listRes] = await Promise.allSettled([
+      apiGet<DepositAddress>("/api/deposits/address"),
+      apiGet<{ deposits: DepositRow[] }>("/api/deposits?limit=20"),
+    ]);
+
+    if (addrRes.status === "fulfilled") {
+      setMeta(addrRes.value);
+      setNotConfigured(false);
+    } else {
+      const e = addrRes.reason as ApiFailure;
+      if (e?.code === "NOT_CONFIGURED") {
+        setNotConfigured(true);
+      } else {
+        toast({ type: "error", title: "Could not load deposit address", description: e?.message });
+      }
+    }
+
+    if (listRes.status === "fulfilled") {
+      setDeposits(listRes.value.deposits);
+      setNeedsSignin(false);
+    } else {
+      const e = listRes.reason as ApiFailure;
+      if (e?.status === 401) {
+        setNeedsSignin(true);
+      } else {
+        // Silent — empty history is fine, the main form still works.
+        console.error("deposit history failed", e);
+      }
     }
   }, [toast]);
 
@@ -131,6 +165,37 @@ export default function DepositPage() {
         </Link>
         <h1 className="text-xl font-bold text-white">Deposit USDC</h1>
       </div>
+
+      {notConfigured && (
+        <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-5 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-yellow-400" />
+            <h2 className="text-sm font-bold text-yellow-400">Deposits not configured yet</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The operator hasn&apos;t set up the deposit address. Add these to your <code className="font-mono text-yellow-400/80">.env.local</code> and restart the server:
+          </p>
+          <pre className="bg-black/30 border border-white/5 rounded-lg p-3 text-[11px] font-mono text-white/80 overflow-x-auto">{`DEPOSIT_ADDRESS=0x...                       # your ops wallet
+USDC_CONTRACT_ADDRESS=0x41E94Eb019...       # Polygon Amoy USDC
+NEXT_PUBLIC_CHAIN_ID=80002
+NEXT_PUBLIC_RPC_URL=https://rpc-amoy.polygon.technology`}</pre>
+          <p className="text-[11px] text-muted-foreground">
+            Full setup docs: <code className="font-mono">docs/DEPLOY.md</code>
+          </p>
+        </div>
+      )}
+
+      {needsSignin && (
+        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-primary" />
+            <p className="text-sm text-white">Sign in to see your deposit history and submit a deposit.</p>
+          </div>
+          <Link href="/auth/signin" className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors">
+            Sign in
+          </Link>
+        </div>
+      )}
 
       {/* Instructions */}
       <BitsCard className="p-6 space-y-5">
