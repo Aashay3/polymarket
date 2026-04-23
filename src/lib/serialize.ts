@@ -28,6 +28,11 @@ export interface MarketDTO {
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  // Populated by the list + detail endpoints that join price history.
+  // null when no baseline is available (market < 24h old, or scheduler
+  // hasn't written snapshots yet).
+  yesChangeBps?: number | null;
+  noChangeBps?: number | null;
 }
 
 export function toMarketDTO(m: Market): MarketDTO {

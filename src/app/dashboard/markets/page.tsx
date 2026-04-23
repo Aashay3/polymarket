@@ -6,6 +6,8 @@ import { TradeModal } from "@/components/TradeModal";
 import { useWallet, Market } from "@/app/context/WalletContext";
 import { MarketCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PriceChangeBadge } from "@/components/markets/PriceChangeBadge";
+import { ProbabilityBar } from "@/components/markets/ProbabilityBar";
 
 export default function MarketsPage() {
     const { markets, isLoading } = useWallet();
@@ -76,9 +78,14 @@ export default function MarketsPage() {
                                 </div>
                             </div>
 
-                            <h3 className="text-lg font-semibold text-white mb-6 group-hover:text-blue-400 transition-colors line-clamp-2">
+                            <h3 className="text-lg font-semibold text-white mb-4 group-hover:text-blue-400 transition-colors line-clamp-2">
                                 {market.question}
                             </h3>
+
+                            {/* Live-animated probability bar */}
+                            <div className="mb-4">
+                                <ProbabilityBar yesPrice={yesPrice} noPrice={noPrice} size="sm" showLabels={false} />
+                            </div>
 
                             {market.status === "RESOLVED" ? (
                                 <div className="mt-auto">
@@ -91,13 +98,19 @@ export default function MarketsPage() {
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setSelectedMarket(market); setTradeType("YES"); }}
                                         className="flex flex-col items-center justify-center bg-green-500/5 hover:bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg py-2 transition-colors">
-                                        <span className="text-xs font-bold uppercase tracking-wider mb-0.5">Yes</span>
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <span className="text-xs font-bold uppercase tracking-wider">Yes</span>
+                                            <PriceChangeBadge bps={market.yesChangeBps} size="xs" />
+                                        </div>
                                         <span className="font-mono text-lg font-semibold">{(yesPrice * 100).toFixed(1)}¢</span>
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setSelectedMarket(market); setTradeType("NO"); }}
                                         className="flex flex-col items-center justify-center bg-red-500/5 hover:bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg py-2 transition-colors">
-                                        <span className="text-xs font-bold uppercase tracking-wider mb-0.5">No</span>
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                            <span className="text-xs font-bold uppercase tracking-wider">No</span>
+                                            <PriceChangeBadge bps={market.noChangeBps} size="xs" />
+                                        </div>
                                         <span className="font-mono text-lg font-semibold">{(noPrice * 100).toFixed(1)}¢</span>
                                     </button>
                                 </div>

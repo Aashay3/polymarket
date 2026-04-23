@@ -8,6 +8,9 @@ import { Decimal } from "decimal.js";
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     market: { findMany: vi.fn() },
+    // $queryRaw is used by getBaselinesForMarkets (DISTINCT ON). Default
+    // returns no baselines; tests don't care about the change values.
+    $queryRaw: vi.fn().mockResolvedValue([]),
   },
 }));
 

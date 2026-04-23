@@ -14,10 +14,13 @@
  * Public — no auth required.
  */
 
+import { Decimal } from "decimal.js";
 import { prisma } from "@/lib/prisma";
 import { handler, ok, parseQuery } from "@/lib/api";
 import { MarketListQuerySchema } from "@/lib/schemas";
 import { toMarketDTO } from "@/lib/serialize";
+import { getBaselinesForMarkets } from "@/lib/price-history";
+import { spotPrice } from "@/lib/amm";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -50,8 +53,26 @@ export const GET = handler(async (req) => {
   const page = hasMore ? markets.slice(0, q.limit) : markets;
   const nextCursor = hasMore ? page[page.length - 1].id : null;
 
+  // Enrich each market with a 24h change. One DB roundtrip total
+  // (DISTINCT ON inside getBaselinesForMarkets), not one per market.
+  const ids = page.map((m) => m.id);
+  const nowYes = new Map<string, Decimal>();
+  const nowNo = new Map<string, Decimal>();
+  for (const m of page) {
+    const yesP = spotPrice({ yesShares: m.yesShares.toString(), noShares: m.noShares.toString() }, "YES");
+    nowYes.set(m.id, yesP);
+    nowNo.set(m.id, new Decimal(1).sub(yesP));
+  }
+  const baselines = await getBaselinesForMarkets(ids, nowYes, nowNo);
+
   return ok({
-    markets: page.map(toMarketDTO),
+    markets: page.map((m) => {
+      const dto = toMarketDTO(m);
+      const change = baselines.get(m.id);
+      dto.yesChangeBps = change?.yesChangeBps ?? null;
+      dto.noChangeBps = change?.noChangeBps ?? null;
+      return dto;
+    }),
     nextCursor,
   });
 });

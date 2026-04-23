@@ -26,6 +26,10 @@ export interface Market {
     feeBps: number;
     status: "OPEN" | "CLOSED" | "RESOLVED" | "VOIDED";
     winningOutcome?: "YES" | "NO";
+    // 24h change in basis points (100 = 1.00%). null when no baseline is
+    // available yet (market < 24h old, or snapshots not populated).
+    yesChangeBps?: number | null;
+    noChangeBps?: number | null;
 }
 
 export interface Trade {
@@ -56,6 +60,8 @@ interface MarketDTO {
     status: "OPEN" | "CLOSED" | "RESOLVED" | "VOIDED";
     winningOutcome: "YES" | "NO" | null;
     endTime: string;
+    yesChangeBps?: number | null;
+    noChangeBps?: number | null;
 }
 
 interface TradeDTO {
@@ -90,6 +96,8 @@ function marketFromDTO(d: MarketDTO, questionById?: Map<string, string>): Market
         volumeAmount: 0,
         status: d.status,
         winningOutcome: d.winningOutcome ?? undefined,
+        yesChangeBps: d.yesChangeBps ?? null,
+        noChangeBps: d.noChangeBps ?? null,
     };
 }
 

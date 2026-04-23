@@ -160,15 +160,32 @@ model Market {
   updatedAt DateTime @updatedAt
 
   // Relations
-  positions Position[]
-  trades    Trade[]
-  comments  Comment[]
-  bookmarks Bookmark[]
-  follows   Follow[]
+  positions      Position[]
+  trades         Trade[]
+  comments       Comment[]
+  bookmarks      Bookmark[]
+  follows        Follow[]
+  priceSnapshots PriceSnapshot[]
 
   @@index([status, endTime])
   @@index([category, status])
   @@index([slug])
+}
+
+// Periodic snapshot of AMM prices. Written by the lifecycle scheduler
+// every 15 minutes (see src/lib/lifecycle.ts). Powers 24h-change badges,
+// detail-page charts, and future analytics. Rows get pruned at some
+// interval (not enforced yet — a TTL job is a Phase 9 item).
+model PriceSnapshot {
+  id        String   @id @default(cuid())
+  marketId  String
+  yesPrice  Decimal  @db.Decimal(10, 8)
+  noPrice   Decimal  @db.Decimal(10, 8)
+  createdAt DateTime @default(now())
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId, createdAt])
 }
 
 // ──────────────────────────────────────────────────────────────

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { TrendingUp } from "lucide-react";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
+import { PriceChangeBadge } from "./PriceChangeBadge";
+import { ProbabilityBar } from "./ProbabilityBar";
 
 interface MarketCardProps {
   id?: string;
@@ -12,10 +14,22 @@ interface MarketCardProps {
   volume: string;
   yesPrice: number;
   noPrice: number;
+  yesChangeBps?: number | null;
+  noChangeBps?: number | null;
   image?: string;
 }
 
-export function MarketCard({ id = "1", title, category, volume, yesPrice, noPrice, image }: MarketCardProps) {
+export function MarketCard({
+  id = "1",
+  title,
+  category,
+  volume,
+  yesPrice,
+  noPrice,
+  yesChangeBps,
+  noChangeBps,
+  image,
+}: MarketCardProps) {
   const router = useRouter();
 
   const handleCardClick = () => {
@@ -26,6 +40,11 @@ export function MarketCard({ id = "1", title, category, volume, yesPrice, noPric
     e.stopPropagation();
     router.push(`/market/${id}?trade=${type}`);
   };
+
+  // yesPrice/noPrice arrive as cents (e.g. 58). Normalise to fraction
+  // for the probability bar which expects 0..1.
+  const yesFrac = yesPrice > 1 ? yesPrice / 100 : yesPrice;
+  const noFrac = noPrice > 1 ? noPrice / 100 : noPrice;
 
   return (
     <BitsCard
@@ -52,24 +71,37 @@ export function MarketCard({ id = "1", title, category, volume, yesPrice, noPric
         </div>
       </div>
 
-      <h3 className="text-15px md:text-16px font-semibold text-white leading-snug mb-6 flex-1 group-hover:text-primary transition-colors">
+      <h3 className="text-15px md:text-16px font-semibold text-white leading-snug mb-4 flex-1 group-hover:text-primary transition-colors">
         {title}
       </h3>
+
+      {/* Animated probability bar + live update flash */}
+      <div className="mb-4">
+        <ProbabilityBar yesPrice={yesFrac} noPrice={noFrac} size="sm" showLabels={false} />
+      </div>
 
       <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
         <BitsButton
           variant="yes"
           onClick={(e) => handleTradeClick(e, "YES")}
-          className="flex-1 justify-between h-9 px-4 rounded-xl font-bold"
+          className="flex-1 justify-between h-9 px-3 rounded-xl font-bold"
         >
-          <span>Yes</span><span>{yesPrice}¢</span>
+          <span className="flex items-center gap-1.5">
+            Yes
+            {yesChangeBps !== undefined && <PriceChangeBadge bps={yesChangeBps} size="xs" />}
+          </span>
+          <span>{Math.round(yesFrac * 100)}¢</span>
         </BitsButton>
         <BitsButton
           variant="no"
           onClick={(e) => handleTradeClick(e, "NO")}
-          className="flex-1 justify-between h-9 px-4 rounded-xl font-bold"
+          className="flex-1 justify-between h-9 px-3 rounded-xl font-bold"
         >
-          <span>No</span><span>{noPrice}¢</span>
+          <span className="flex items-center gap-1.5">
+            No
+            {noChangeBps !== undefined && <PriceChangeBadge bps={noChangeBps} size="xs" />}
+          </span>
+          <span>{Math.round(noFrac * 100)}¢</span>
         </BitsButton>
       </div>
     </BitsCard>

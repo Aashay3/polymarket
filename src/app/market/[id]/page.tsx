@@ -8,6 +8,8 @@ import { TradeBox } from "@/components/markets/detail/TradeBox";
 import { MarketTabs } from "@/components/markets/detail/MarketTabs";
 import { SocialSection } from "@/components/markets/detail/SocialSection";
 import { RightSidebar } from "@/components/markets/detail/RightSidebar";
+import { PriceHistoryChart } from "@/components/markets/PriceHistoryChart";
+import { ProbabilityBar } from "@/components/markets/ProbabilityBar";
 import { BitsAccordion } from "@/components/ui/bits/BitsAccordion";
 import { Footer } from "@/components/layout/Footer";
 import { HelpCircle, ArrowLeft } from "lucide-react";
@@ -42,10 +44,15 @@ const MARKET_DATA = {
 export default function MarketDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { placeTrade } = useWallet();
+  const { placeTrade, markets } = useWallet();
   const [selectedOutcome, setSelectedOutcome] = useState(MARKET_DATA.outcomes[1]);
 
   const marketId = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? MARKET_DATA.id;
+
+  // Live market (if it's in our local state). Falls back to mock values
+  // when the id doesn't resolve to a real market, so this page still
+  // renders for demo links.
+  const liveMarket = markets.find((m) => m.id === marketId || m.slug === marketId);
 
   const handleTrade = (amount: number, type: "YES" | "NO") => {
     placeTrade(marketId, type, amount);
@@ -68,19 +75,45 @@ export default function MarketDetailPage() {
           
           {/* LEFT: Main Content (60%) */}
           <div className="space-y-12">
-            <MarketDetailHeader 
+            <MarketDetailHeader
               title={MARKET_DATA.title}
               category={MARKET_DATA.category}
               volume={MARKET_DATA.volume}
               image={MARKET_DATA.image}
             />
 
+            {/* Live probability bar — animates YES/NO widths and flashes on SSE updates. */}
+            {liveMarket && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-black text-white/30 uppercase tracking-[0.2em]">
+                  Current Odds
+                </h2>
+                <div className="bg-white/2 border border-white/5 rounded-2xl p-5">
+                  <ProbabilityBar
+                    yesPrice={liveMarket.yesPrice}
+                    noPrice={liveMarket.noPrice}
+                    size="lg"
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* 24h price history */}
+            {liveMarket && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-black text-white/30 uppercase tracking-[0.2em]">
+                  Price History
+                </h2>
+                <PriceHistoryChart marketId={liveMarket.id} />
+              </section>
+            )}
+
             <section className="space-y-6">
               <h2 className="text-sm font-black text-white/30 uppercase tracking-[0.2em]">
                   Market Outcomes
               </h2>
-              <OutcomeList 
-                  outcomes={MARKET_DATA.outcomes} 
+              <OutcomeList
+                  outcomes={MARKET_DATA.outcomes}
                   onTrade={(outcome) => setSelectedOutcome(outcome)}
               />
             </section>
