@@ -24,6 +24,7 @@ import { requireUser } from "@/lib/auth-helpers";
 import { PlaceTradeSchema, PaginationSchema } from "@/lib/schemas";
 import { quoteBuy } from "@/lib/amm";
 import { toMarketDTO, toTradeDTO, toPositionDTO } from "@/lib/serialize";
+import { publish } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -157,14 +158,30 @@ export const POST = handler(async (req) => {
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
 
+  // Broadcast to SSE subscribers AFTER commit so readers never see a pool
+  // state that wasn't actually persisted.
+  const marketDTO = toMarketDTO(result.market);
+  const tradeDTO = toTradeDTO(result.trade);
+  const positionDTO = toPositionDTO(result.position);
+  const balancePayload = {
+    available: result.newBalance?.available.toString() ?? "0",
+    locked: result.newBalance?.locked.toString() ?? "0",
+  };
+  publish({ type: "trade.executed", trade: tradeDTO, market: marketDTO });
+  publish({ type: "market.updated", market: marketDTO });
+  publish({ type: "position.updated", userId: user.id, position: positionDTO });
+  publish({
+    type: "balance.changed",
+    userId: user.id,
+    available: balancePayload.available,
+    locked: balancePayload.locked,
+  });
+
   return ok({
-    trade: toTradeDTO(result.trade),
-    market: toMarketDTO(result.market),
-    position: toPositionDTO(result.position),
-    balance: {
-      available: result.newBalance?.available.toString() ?? "0",
-      locked: result.newBalance?.locked.toString() ?? "0",
-    },
+    trade: tradeDTO,
+    market: marketDTO,
+    position: positionDTO,
+    balance: balancePayload,
   });
 });
 

@@ -13,6 +13,8 @@
 
 import { handler, ok, err } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { publish } from "@/lib/events";
+import { toMarketDTO } from "@/lib/serialize";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +31,29 @@ function isAuthorized(req: Request): boolean {
 export const GET = handler(async (req) => {
   if (!isAuthorized(req)) return err("UNAUTHORIZED", "Cron secret required", 401);
 
-  const result = await prisma.market.updateMany({
+  // Fetch + update + publish. We fetch first so we can emit events for the
+  // specific markets that transitioned.
+  const expiring = await prisma.market.findMany({
     where: { status: "OPEN", endTime: { lte: new Date() } },
+    select: { id: true },
+  });
+  if (expiring.length === 0) {
+    return ok({ closed: 0, ranAt: new Date().toISOString() });
+  }
+
+  const ids = expiring.map((m) => m.id);
+  await prisma.market.updateMany({
+    where: { id: { in: ids } },
     data: { status: "CLOSED" },
   });
 
+  const closed = await prisma.market.findMany({ where: { id: { in: ids } } });
+  for (const m of closed) {
+    publish({ type: "market.updated", market: toMarketDTO(m) });
+  }
+
   return ok({
-    closed: result.count,
+    closed: closed.length,
     ranAt: new Date().toISOString(),
   });
 });

@@ -199,46 +199,57 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return () => { cancelled = true; };
     }, [refreshMarkets]);
 
-    // Live updates: poll /api/markets/updates every 5 seconds while the tab
-    // is visible, merging any changed markets into local state. Paused when
-    // the tab is hidden (we refresh immediately on re-focus).
+    // Live updates: subscribe to /api/stream via EventSource. The server
+    // pushes market.updated / trade.executed / balance.changed etc. the
+    // moment they happen. EventSource handles automatic reconnection.
     useEffect(() => {
-        let cancelled = false;
-        let sinceIso = new Date().toISOString();
+        if (typeof window === "undefined" || typeof EventSource === "undefined") return;
 
-        const poll = async () => {
-            if (cancelled || document.hidden) return;
+        const source = new EventSource("/api/stream");
+
+        const mergeMarket = (dto: MarketDTO) => {
+            setMarkets((prev) => {
+                const idx = prev.findIndex((m) => m.id === dto.id);
+                if (idx === -1) return [marketFromDTO(dto), ...prev];
+                const next = prev.slice();
+                next[idx] = marketFromDTO(dto);
+                return next;
+            });
+        };
+
+        source.addEventListener("open", () => setIsConnected(true));
+        source.addEventListener("error", () => setIsConnected(false));
+
+        source.addEventListener("market.updated", (e) => {
             try {
-                const data = await api<{
-                    markets: MarketDTO[];
-                    serverTime: string;
-                }>(`/api/markets/updates?since=${encodeURIComponent(sinceIso)}`);
-                sinceIso = data.serverTime;
-                if (data.markets.length > 0) {
-                    setMarkets((prev) => {
-                        const byId = new Map(prev.map((m) => [m.id, m]));
-                        for (const dto of data.markets) {
-                            byId.set(dto.id, marketFromDTO(dto));
-                        }
-                        return Array.from(byId.values());
-                    });
-                }
-                setIsConnected(true);
-            } catch {
-                setIsConnected(false);
-            }
-        };
+                const payload = JSON.parse((e as MessageEvent).data) as { market: MarketDTO };
+                mergeMarket(payload.market);
+            } catch { /* ignore malformed frame */ }
+        });
 
-        const interval = setInterval(() => { void poll(); }, 5000);
-        const onVisible = () => {
-            if (!document.hidden) void poll();
-        };
-        document.addEventListener("visibilitychange", onVisible);
+        source.addEventListener("market.created", (e) => {
+            try {
+                const payload = JSON.parse((e as MessageEvent).data) as { market: MarketDTO };
+                mergeMarket(payload.market);
+            } catch { /* ignore */ }
+        });
+
+        source.addEventListener("market.resolved", (e) => {
+            try {
+                const payload = JSON.parse((e as MessageEvent).data) as { market: MarketDTO };
+                mergeMarket(payload.market);
+            } catch { /* ignore */ }
+        });
+
+        source.addEventListener("balance.changed", (e) => {
+            try {
+                const payload = JSON.parse((e as MessageEvent).data) as { available: string };
+                setBalance(parseFloat(payload.available));
+            } catch { /* ignore */ }
+        });
 
         return () => {
-            cancelled = true;
-            clearInterval(interval);
-            document.removeEventListener("visibilitychange", onVisible);
+            source.close();
         };
     }, []);
 

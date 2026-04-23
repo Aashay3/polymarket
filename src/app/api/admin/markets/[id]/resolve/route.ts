@@ -20,6 +20,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { z } from "zod";
 import { OutcomeSchema } from "@/lib/schemas";
 import { toMarketDTO } from "@/lib/serialize";
+import { publish } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,8 @@ export const POST = handler(async (req, ctx: { params: Promise<{ id: string }> }
 
       let totalPaid = new Decimal(0);
       let winnersCount = 0;
+      // Collect per-user summaries so we can broadcast events AFTER commit.
+      const winnerPayouts: Array<{ userId: string; payout: string; notificationTitle: string; notificationBody: string }> = [];
 
       for (const pos of positions) {
         const shares = new Decimal(pos.shares.toString());
@@ -82,12 +85,21 @@ export const POST = handler(async (req, ctx: { params: Promise<{ id: string }> }
           totalPaid = totalPaid.add(payout);
           winnersCount += 1;
 
+          const notifTitle = "You won!";
+          const notifBody = `+${payout.toFixed(2)} USDC on "${market.question}" (net P/L ${payout.sub(costBasis).toFixed(2)})`;
+          winnerPayouts.push({
+            userId: pos.userId,
+            payout: payout.toFixed(6),
+            notificationTitle: notifTitle,
+            notificationBody: notifBody,
+          });
+
           await tx.notification.create({
             data: {
               userId: pos.userId,
               type: "POSITION_WON",
-              title: "You won!",
-              body: `+${payout.toFixed(2)} USDC on "${market.question}" (net P/L ${payout.sub(costBasis).toFixed(2)})`,
+              title: notifTitle,
+              body: notifBody,
               data: { marketId: market.id, payout: payout.toFixed(6) } as Prisma.InputJsonValue,
             },
           }).catch(() => { /* notification failures shouldn't block settlement */ });
@@ -124,13 +136,34 @@ export const POST = handler(async (req, ctx: { params: Promise<{ id: string }> }
         },
       });
 
-      return { market: resolvedMarket, winnersCount, totalPaid };
+      return { market: resolvedMarket, winnersCount, totalPaid, winnerPayouts };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 },
   );
 
+  const marketDTO = toMarketDTO(result.market);
+  publish({ type: "market.resolved", market: marketDTO });
+  publish({ type: "market.updated", market: marketDTO });
+  // Per-winner events so each affected user's UI updates instantly.
+  for (const w of result.winnerPayouts) {
+    publish({
+      type: "notification.new",
+      userId: w.userId,
+      notification: {
+        id: `payout-${result.market.id}-${w.userId}`,
+        type: "POSITION_WON",
+        title: w.notificationTitle,
+        body: w.notificationBody,
+        createdAt: new Date().toISOString(),
+      },
+    });
+    // Balance/position deltas: client will refetch on the notification or
+    // on next action; we could publish exact new values by fetching here
+    // post-tx, but one round-trip per winner is cheap compared to staleness.
+  }
+
   return ok({
-    market: toMarketDTO(result.market),
+    market: marketDTO,
     winnersCount: result.winnersCount,
     totalPaid: result.totalPaid.toFixed(6),
   });

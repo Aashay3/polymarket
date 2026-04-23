@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { CreateMarketSchema } from "@/lib/schemas";
 import { toMarketDTO } from "@/lib/serialize";
+import { publish } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -74,5 +75,8 @@ export const POST = handler(async (req) => {
     },
   });
 
-  return ok({ market: toMarketDTO(market) }, { status: 201 });
+  const dto = toMarketDTO(market);
+  publish({ type: "market.created", market: dto });
+
+  return ok({ market: dto }, { status: 201 });
 });
