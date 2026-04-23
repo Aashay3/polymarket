@@ -150,3 +150,26 @@ export const MarketListQuerySchema = PaginationSchema.extend({
   sort: z.enum(["volume", "endTime", "createdAt"]).default("createdAt"),
   order: z.enum(["asc", "desc"]).default("desc"),
 });
+
+// ─── Deposits & withdrawals ───────────────────────────────────
+
+export const TxHashSchema = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{64}$/, "Invalid 32-byte transaction hash");
+
+export const SubmitDepositSchema = z.object({
+  txHash: TxHashSchema,
+});
+
+export const RequestWithdrawalSchema = z.object({
+  toAddress: EthAddressSchema,
+  amount: USDCAmountSchema,
+});
+
+export const CompleteWithdrawalSchema = z.object({
+  txHash: TxHashSchema,
+});
+
+export const RejectWithdrawalSchema = z.object({
+  reason: z.string().min(3).max(500),
+});

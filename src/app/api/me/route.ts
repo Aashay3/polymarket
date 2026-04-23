@@ -33,6 +33,8 @@ export const GET = handler(async () => {
     balance: {
       available: balance.available.toString(),
       locked: balance.locked.toString(),
+      totalDeposited: balance.totalDeposited.toString(),
+      totalWithdrawn: balance.totalWithdrawn.toString(),
     },
   });
 });

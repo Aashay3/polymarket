@@ -7,7 +7,7 @@
 
 import { Decimal } from "decimal.js";
 import { spotPrice } from "./amm";
-import type { Market, MarketStatus, Outcome, Position, Trade } from "@prisma/client";
+import type { Deposit, DepositStatus, Market, MarketStatus, Outcome, Position, Trade, Withdrawal, WithdrawalStatus } from "@prisma/client";
 
 export interface MarketDTO {
   id: string;
@@ -89,6 +89,62 @@ export interface TradeDTO {
   fee: string;
   netAmount: string;
   createdAt: string;
+}
+
+export interface DepositDTO {
+  id: string;
+  txHash: string;
+  chainId: number;
+  fromAddress: string;
+  toAddress: string;
+  amount: string;
+  status: DepositStatus;
+  rejectionReason: string | null;
+  blockNumber: number | null;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+export function toDepositDTO(d: Deposit): DepositDTO {
+  return {
+    id: d.id,
+    txHash: d.txHash,
+    chainId: d.chainId,
+    fromAddress: d.fromAddress,
+    toAddress: d.toAddress,
+    amount: d.amount.toString(),
+    status: d.status,
+    rejectionReason: d.rejectionReason,
+    blockNumber: d.blockNumber,
+    createdAt: d.createdAt.toISOString(),
+    confirmedAt: d.confirmedAt?.toISOString() ?? null,
+  };
+}
+
+export interface WithdrawalDTO {
+  id: string;
+  toAddress: string;
+  chainId: number;
+  amount: string;
+  txHash: string | null;
+  status: WithdrawalStatus;
+  rejectionReason: string | null;
+  requestedAt: string;
+  processedAt: string | null;
+}
+
+export function toWithdrawalDTO(w: Withdrawal): WithdrawalDTO {
+  return {
+    id: w.id,
+    toAddress: w.toAddress,
+    chainId: w.chainId,
+    amount: w.amount.toString(),
+    txHash: w.txHash,
+    status: w.status,
+    rejectionReason: w.rejectionReason,
+    requestedAt: w.requestedAt.toISOString(),
+    processedAt: w.processedAt?.toISOString() ?? null,
+  };
 }
 
 export function toTradeDTO(t: Trade): TradeDTO {

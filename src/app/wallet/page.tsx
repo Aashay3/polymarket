@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDownLeft, ArrowUpRight, Plus, Wallet, CreditCard, Zap, History, Eye, EyeOff, X, Check, RefreshCw } from "lucide-react";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useWallet } from "@/app/context/WalletContext";
@@ -59,6 +60,7 @@ function ActionModal({ mode, onClose, onConfirm }: { mode: "deposit" | "withdraw
 
 export default function WalletPage() {
   const { balance, myTrades } = useWallet();
+  const router = useRouter();
   const [hidden, setHidden] = useState(false);
   const [modal, setModal] = useState<"deposit" | "withdraw" | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -108,9 +110,9 @@ export default function WalletPage() {
         <div className="h-px bg-white/6 mb-6" />
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Deposit",   icon: <ArrowDownLeft className="w-4 h-4" />, action: () => setModal("deposit")   },
-            { label: "Withdraw",  icon: <ArrowUpRight className="w-4 h-4" />,  action: () => setModal("withdraw")  },
-            { label: "Add Funds", icon: <Plus className="w-4 h-4" />,          action: () => setModal("deposit")   },
+            { label: "Deposit",   icon: <ArrowDownLeft className="w-4 h-4" />, action: () => router.push("/wallet/deposit")  },
+            { label: "Withdraw",  icon: <ArrowUpRight className="w-4 h-4" />,  action: () => router.push("/wallet/withdraw") },
+            { label: "Add Funds", icon: <Plus className="w-4 h-4" />,          action: () => router.push("/wallet/deposit")  },
           ].map(btn => (
             <button key={btn.label} onClick={btn.action}
               className="py-3.5 rounded-xl border border-white/10 bg-white/3 text-white text-xs font-semibold hover:bg-white/6 hover:border-white/20 transition-colors flex flex-col items-center gap-1.5">
