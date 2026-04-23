@@ -1,65 +1,57 @@
-import { NextResponse } from "next/server";
+/**
+ * GET /api/markets — list markets with filters + cursor pagination.
+ *
+ * Query params (all optional):
+ *   status=OPEN|CLOSED|RESOLVED|VOIDED
+ *   category=Crypto
+ *   search=bitcoin            (ILIKE match on question)
+ *   sort=volume|endTime|createdAt   (default: createdAt)
+ *   order=asc|desc                  (default: desc)
+ *   cursor=<cuid>                   (opaque pagination cursor)
+ *   limit=1..100                    (default: 20)
+ *
+ * Returns { markets: MarketDTO[], nextCursor: string | null }.
+ * Public — no auth required.
+ */
 
-export async function GET() {
-    // Mock backend delays
-    await new Promise((resolve) => setTimeout(resolve, 800));
+import { prisma } from "@/lib/prisma";
+import { handler, ok, parseQuery } from "@/lib/api";
+import { MarketListQuerySchema } from "@/lib/schemas";
+import { toMarketDTO } from "@/lib/serialize";
+import type { Prisma } from "@prisma/client";
 
-    const mockMarkets = [
-        {
-            id: "1",
-            question: "Will Bitcoin hit $100k before December?",
-            yesPrice: 0.42,
-            noPrice: 0.58,
-            endTime: "2026-12-01T00:00:00Z",
-            volume: "$4.5M",
-            category: "Crypto"
-        },
-        {
-            id: "2",
-            question: "Will the Fed cut rates in Q4 2026?",
-            yesPrice: 0.65,
-            noPrice: 0.35,
-            endTime: "2026-12-31T00:00:00Z",
-            volume: "$1.2M",
-            category: "Finance"
-        },
-        {
-            id: "3",
-            question: "Will SpaceX land on Mars in 2026?",
-            yesPrice: 0.12,
-            noPrice: 0.88,
-            endTime: "2026-12-31T23:59:59Z",
-            volume: "$890K",
-            category: "Science"
-        },
-        {
-            id: "4",
-            question: "Ethereum ETF approved by SEC?",
-            yesPrice: 0.88,
-            noPrice: 0.12,
-            endTime: "2026-06-30T00:00:00Z",
-            volume: "$3.1M",
-            category: "Crypto"
-        },
-        {
-            id: "5",
-            question: "Will GPT-5 be released by OpenAI before 2027?",
-            yesPrice: 0.76,
-            noPrice: 0.24,
-            endTime: "2026-12-31T00:00:00Z",
-            volume: "$2.4M",
-            category: "Technology"
-        },
-        {
-            id: "6",
-            question: "US GDP growth > 2.5% in 2026?",
-            yesPrice: 0.55,
-            noPrice: 0.45,
-            endTime: "2027-01-31T00:00:00Z",
-            volume: "$1.8M",
-            category: "Economy"
-        }
-    ];
+export const dynamic = "force-dynamic";
 
-    return NextResponse.json({ markets: mockMarkets });
-}
+export const GET = handler(async (req) => {
+  const q = parseQuery(req, MarketListQuerySchema);
+
+  const where: Prisma.MarketWhereInput = {};
+  if (q.status) where.status = q.status;
+  if (q.category) where.category = q.category;
+  if (q.search) where.question = { contains: q.search, mode: "insensitive" };
+
+  // Sort field mapping. `volume` isn't stored directly; proxy by Trade.amount
+  // SUM for now via an aggregate. Keep it simple for MVP — sort by createdAt
+  // when volume requested, with a TODO for a denormalized volume column.
+  const orderBy: Prisma.MarketOrderByWithRelationInput =
+    q.sort === "endTime"
+      ? { endTime: q.order }
+      : { createdAt: q.order };
+
+  // Cursor pagination: fetch limit+1 to detect a next page.
+  const markets = await prisma.market.findMany({
+    where,
+    orderBy,
+    take: q.limit + 1,
+    ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
+  });
+
+  const hasMore = markets.length > q.limit;
+  const page = hasMore ? markets.slice(0, q.limit) : markets;
+  const nextCursor = hasMore ? page[page.length - 1].id : null;
+
+  return ok({
+    markets: page.map(toMarketDTO),
+    nextCursor,
+  });
+});

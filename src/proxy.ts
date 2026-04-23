@@ -13,8 +13,8 @@ import { authConfig } from "@/lib/auth.config";
  *     to /auth/signin; signed-in non-admins get kicked to / with ?error=unauthorized.
  *   - /api/admin/**        → same, but JSON 401/403 (never redirect).
  *
- * The socket.io custom server bypasses Next proxy — real-time auth is
- * handled in Phase 5 via an `io.use()` middleware.
+ * Phase 5 will reintroduce real-time updates (likely via SSE or a
+ * separate WebSocket service) with auth handled at the connection handshake.
  */
 
 const { auth } = NextAuth(authConfig);

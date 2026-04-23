@@ -39,7 +39,7 @@ export function TradeModal({ isOpen, onClose, market, initialType }: TradeModalP
     const price = type === "YES" ? yesPrice : noPrice;
     const simulatedShares = amount ? parseFloat(amount) / price : 0;
 
-    const handleTrade = () => {
+    const handleTrade = async () => {
         setError("");
         const numAmount = parseFloat(amount);
 
@@ -53,7 +53,7 @@ export function TradeModal({ isOpen, onClose, market, initialType }: TradeModalP
             return;
         }
 
-        const tradeOk = placeTrade(market.id, type, numAmount);
+        const tradeOk = await placeTrade(market.id, type, numAmount);
         if (tradeOk) {
             setSuccess(true);
             setTimeout(() => {

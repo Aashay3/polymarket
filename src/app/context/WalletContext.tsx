@@ -1,19 +1,30 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { io, Socket } from "socket.io-client";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useToast } from "./ToastContext";
 
+// ─────────────────────────────────────────────────────────────
+// Types — align with API DTOs in src/lib/serialize.ts but expressed
+// as numbers where the UI renders them, for component ergonomics.
+// Decimal precision is preserved server-side; UI uses 6-dec floats.
+// ─────────────────────────────────────────────────────────────
+
 export interface Market {
     id: string;
+    slug: string;
     question: string;
+    description: string;
+    category: string;
+    imageUrl: string | null;
     yesShares: number;
     noShares: number;
+    yesPrice: number;
+    noPrice: number;
     endTime: string;
-    volumeAmount: number;
-    category: string;
-    status: "OPEN" | "RESOLVED";
+    volumeAmount: number; // denormalized on the detail fetch only
+    feeBps: number;
+    status: "OPEN" | "CLOSED" | "RESOLVED" | "VOIDED";
     winningOutcome?: "YES" | "NO";
 }
 
@@ -22,11 +33,79 @@ export interface Trade {
     marketId: string;
     marketQuestion: string;
     type: "YES" | "NO";
+    side: "BUY" | "SELL";
     amount: number;
     price: number;
     shares: number;
     timestamp: string;
     userId?: string;
+}
+
+interface MarketDTO {
+    id: string;
+    slug: string;
+    question: string;
+    description: string;
+    category: string;
+    imageUrl: string | null;
+    yesShares: string;
+    noShares: string;
+    yesPrice: string;
+    noPrice: string;
+    feeBps: number;
+    status: "OPEN" | "CLOSED" | "RESOLVED" | "VOIDED";
+    winningOutcome: "YES" | "NO" | null;
+    endTime: string;
+}
+
+interface TradeDTO {
+    id: string;
+    userId: string;
+    marketId: string;
+    outcome: "YES" | "NO";
+    side: "BUY" | "SELL";
+    shares: string;
+    pricePerShare: string;
+    amount: string;
+    fee: string;
+    netAmount: string;
+    createdAt: string;
+}
+
+function marketFromDTO(d: MarketDTO, questionById?: Map<string, string>): Market {
+    void questionById;
+    return {
+        id: d.id,
+        slug: d.slug,
+        question: d.question,
+        description: d.description,
+        category: d.category,
+        imageUrl: d.imageUrl,
+        yesShares: parseFloat(d.yesShares),
+        noShares: parseFloat(d.noShares),
+        yesPrice: parseFloat(d.yesPrice),
+        noPrice: parseFloat(d.noPrice),
+        feeBps: d.feeBps,
+        endTime: d.endTime,
+        volumeAmount: 0,
+        status: d.status,
+        winningOutcome: d.winningOutcome ?? undefined,
+    };
+}
+
+function tradeFromDTO(d: TradeDTO, marketQuestion: string): Trade {
+    return {
+        id: d.id,
+        marketId: d.marketId,
+        marketQuestion,
+        type: d.outcome,
+        side: d.side,
+        amount: parseFloat(d.amount),
+        price: parseFloat(d.pricePerShare),
+        shares: parseFloat(d.shares),
+        timestamp: d.createdAt,
+        userId: d.userId,
+    };
 }
 
 interface WalletContextType {
@@ -36,227 +115,259 @@ interface WalletContextType {
     markets: Market[];
     isLoading: boolean;
     isConnected: boolean;
-    placeTrade: (marketId: string, type: "YES" | "NO", amount: number) => boolean;
-    closePosition: (marketId: string, type: "YES" | "NO") => boolean;
-    resolveMarket: (marketId: string, outcome: "YES" | "NO") => boolean;
-    createNewMarket: (question: string, category: string, endTime: string) => boolean;
+    placeTrade: (marketId: string, type: "YES" | "NO", amount: number) => Promise<boolean>;
+    closePosition: (marketId: string, type: "YES" | "NO") => Promise<boolean>;
+    resolveMarket: (marketId: string, outcome: "YES" | "NO") => Promise<boolean>;
+    createNewMarket: (question: string, category: string, endTime: string) => Promise<boolean>;
+    refreshMarkets: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+// ─────────────────────────────────────────────────────────────
+// API helper — unwraps our { ok, data } | { ok, error } envelope.
+// ─────────────────────────────────────────────────────────────
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(path, {
+        ...init,
+        headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    });
+    const body = await res.json().catch(() => ({ ok: false, error: { message: "Bad response" } }));
+    if (!body.ok) {
+        const msg = body?.error?.message ?? `HTTP ${res.status}`;
+        throw new Error(msg);
+    }
+    return body.data as T;
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
-    const [balance, setBalance] = useState<number>(1000.00);
+    const [balance, setBalance] = useState<number>(0);
     const [trades, setTrades] = useState<Trade[]>([]);
     const [markets, setMarkets] = useState<Market[]>([]);
-    const socketRef = useRef<Socket | null>(null);
+    const marketsRef = useRef<Market[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const { toast } = useToast();
-    const { data: session } = useSession();
+    const { data: session, status: sessionStatus } = useSession();
+    const userId = session?.user?.id;
 
-    // Prefer the real session user id; fall back to an anonymous stable id so
-    // public browsing still works before sign-in. Once Phase 3 replaces the
-    // socket/mock store with API routes, trades will server-side-require auth
-    // and the anon fallback will be read-only.
-    const [anonId] = useState(() => Math.random().toString(36).substring(2, 9));
-    const userId = session?.user?.id ?? `anon-${anonId}`;
-
-    useEffect(() => {
-        const socketInstance = io();
-
-        socketInstance.on("connect", () => {
+    const refreshMarkets = useCallback(async () => {
+        try {
+            const data = await api<{ markets: MarketDTO[] }>(`/api/markets?limit=100`);
+            setMarkets(data.markets.map((m) => marketFromDTO(m)));
             setIsConnected(true);
-        });
-
-        socketInstance.on("disconnect", () => {
+        } catch (e) {
             setIsConnected(false);
-        });
+            console.error("refreshMarkets failed", e);
+        }
+    }, []);
 
-        socketInstance.on("initial_state", (data: { markets: Market[], trades: Trade[] }) => {
-            setMarkets(data.markets);
-            setTrades(data.trades);
+    const refreshMyTrades = useCallback(async (marketQuestions: Map<string, string>) => {
+        try {
+            const data = await api<{ trades: TradeDTO[] }>(`/api/trades?limit=100`);
+            setTrades(data.trades.map((t) => tradeFromDTO(t, marketQuestions.get(t.marketId) ?? "")));
+        } catch (e) {
+            console.error("refreshMyTrades failed", e);
+        }
+    }, []);
+
+    const refreshBalance = useCallback(async () => {
+        try {
+            const data = await api<{ balance: { available: string } }>(`/api/me`);
+            setBalance(parseFloat(data.balance.available));
+        } catch {
+            setBalance(0);
+        }
+    }, []);
+
+    // Keep the ref in sync with markets so other effects can read the
+    // latest mapping without depending on `markets` (which changes on every
+    // pool update — we don't want to refetch trades then).
+    useEffect(() => {
+        marketsRef.current = markets;
+    }, [markets]);
+
+    // Initial load
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            setIsLoading(true);
+            await refreshMarkets();
+            if (cancelled) return;
             setIsLoading(false);
-        });
+        })();
+        return () => { cancelled = true; };
+    }, [refreshMarkets]);
 
-        socketInstance.on("market_updated", (updatedMarket: Market) => {
-            setMarkets(prev => {
-                const exists = prev.some(m => m.id === updatedMarket.id);
-                if (exists) {
-                    return prev.map(m => m.id === updatedMarket.id ? updatedMarket : m);
-                } else {
-                    return [...prev, updatedMarket];
-                }
-            });
-        });
+    // Reset local state when the session transitions to signed-out, using
+    // React's "derive from prev state during render" pattern to avoid a
+    // setState-in-effect (which React 19 now flags).
+    const [prevSession, setPrevSession] = useState(sessionStatus);
+    if (prevSession !== sessionStatus) {
+        setPrevSession(sessionStatus);
+        if (sessionStatus !== "authenticated") {
+            setBalance(0);
+            setTrades([]);
+        }
+    }
 
-        socketInstance.on("trade_executed", (newTrade: Trade) => {
-            setTrades(prev => [newTrade, ...prev]);
-        });
+    // Reload balance + trades when the user signs in. Reading market state
+    // via `marketsRef` means the effect doesn't depend on `markets` — we
+    // don't want to refetch trades every time the pool updates. The fetches
+    // are wrapped in an async IIFE so the setState calls inside them run
+    // off the effect's sync path.
+    useEffect(() => {
+        if (sessionStatus !== "authenticated") return;
+        void (async () => {
+            await refreshBalance();
+            const mapping = new Map(marketsRef.current.map((m) => [m.id, m.question]));
+            await refreshMyTrades(mapping);
+        })();
+    }, [sessionStatus, userId, refreshBalance, refreshMyTrades]);
 
-        socketInstance.on("market_resolved", (data: { marketId: string, outcome: "YES" | "NO" }) => {
-            setMarkets(prev => {
-                const resolved = prev.find(m => m.id === data.marketId);
-                if (resolved) {
-                    toast({
-                        type: "info",
-                        title: "Market resolved",
-                        description: `"${resolved.question}" → ${data.outcome}`,
-                    });
-                }
-                return prev.map(m =>
-                    m.id === data.marketId ? { ...m, status: "RESOLVED", winningOutcome: data.outcome } : m
+    const myTrades = trades.filter((t) => t.userId === userId);
+
+    const placeTrade = useCallback(
+        async (marketId: string, type: "YES" | "NO", amount: number): Promise<boolean> => {
+            if (amount <= 0) {
+                toast({ type: "error", title: "Invalid amount", description: "Enter a positive amount to trade." });
+                return false;
+            }
+            if (sessionStatus !== "authenticated") {
+                toast({ type: "error", title: "Please sign in", description: "You need an account to place trades." });
+                return false;
+            }
+            try {
+                const data = await api<{
+                    trade: TradeDTO;
+                    market: MarketDTO;
+                    balance: { available: string };
+                }>("/api/trades", {
+                    method: "POST",
+                    body: JSON.stringify({ marketId, outcome: type, amount: amount.toFixed(6) }),
+                });
+
+                const updated = marketFromDTO(data.market);
+                setMarkets((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+                setBalance(parseFloat(data.balance.available));
+                setTrades((prev) => [tradeFromDTO(data.trade, updated.question), ...prev]);
+
+                toast({
+                    type: "success",
+                    title: `${type} order filled`,
+                    description: `${parseFloat(data.trade.shares).toFixed(2)} shares @ ${(parseFloat(data.trade.pricePerShare) * 100).toFixed(1)}¢`,
+                });
+                return true;
+            } catch (e) {
+                toast({ type: "error", title: "Trade failed", description: e instanceof Error ? e.message : "Unknown error" });
+                return false;
+            }
+        },
+        [sessionStatus, toast],
+    );
+
+    const closePosition = useCallback(
+        async (marketId: string, type: "YES" | "NO"): Promise<boolean> => {
+            if (sessionStatus !== "authenticated") {
+                toast({ type: "error", title: "Please sign in" });
+                return false;
+            }
+            try {
+                const data = await api<{
+                    trade: TradeDTO;
+                    market: MarketDTO;
+                    balance: { available: string };
+                    realizedPnl: string;
+                }>("/api/positions/close", {
+                    method: "POST",
+                    body: JSON.stringify({ marketId, outcome: type }),
+                });
+
+                const updated = marketFromDTO(data.market);
+                setMarkets((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+                setBalance(parseFloat(data.balance.available));
+                setTrades((prev) => [tradeFromDTO(data.trade, updated.question), ...prev]);
+
+                const pnl = parseFloat(data.realizedPnl);
+                toast({
+                    type: pnl >= 0 ? "success" : "info",
+                    title: "Position closed",
+                    description: `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)} realized`,
+                });
+                return true;
+            } catch (e) {
+                toast({ type: "error", title: "Close failed", description: e instanceof Error ? e.message : "Unknown error" });
+                return false;
+            }
+        },
+        [sessionStatus, toast],
+    );
+
+    const resolveMarket = useCallback(
+        async (marketId: string, outcome: "YES" | "NO"): Promise<boolean> => {
+            try {
+                const data = await api<{ market: MarketDTO; winnersCount: number; totalPaid: string }>(
+                    `/api/admin/markets/${marketId}/resolve`,
+                    { method: "POST", body: JSON.stringify({ outcome }) },
                 );
-            });
+                const updated = marketFromDTO(data.market);
+                setMarkets((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+                toast({
+                    type: "success",
+                    title: "Market resolved",
+                    description: `${data.winnersCount} winners paid $${parseFloat(data.totalPaid).toFixed(2)}`,
+                });
+                return true;
+            } catch (e) {
+                toast({ type: "error", title: "Resolve failed", description: e instanceof Error ? e.message : "Unknown error" });
+                return false;
+            }
+        },
+        [toast],
+    );
 
-            setTrades(currentTrades => {
-                const myWinningTrades = currentTrades.filter(t => t.userId === userId && t.marketId === data.marketId && t.type === data.outcome);
-                const payout = myWinningTrades.reduce((sum, t) => sum + t.shares, 0);
-                if (payout > 0) {
-                    setBalance(b => b + payout);
-                    toast({
-                        type: "success",
-                        title: "You won",
-                        description: `$${payout.toFixed(2)} credited to your balance.`,
-                    });
-                }
-                return currentTrades;
-            });
-        });
-
-        socketRef.current = socketInstance;
-
-        // Fallback: stop showing skeletons after 6s even if the server never responds
-        const loadTimeout = setTimeout(() => setIsLoading(false), 6000);
-
-        return () => {
-            clearTimeout(loadTimeout);
-            socketInstance.disconnect();
-            socketRef.current = null;
-        };
-    }, [userId, toast]);
-
-    const myTrades = trades.filter(t => t.userId === userId);
-
-    const placeTrade = (marketId: string, type: "YES" | "NO", amount: number) => {
-        if (amount <= 0) {
-            toast({ type: "error", title: "Invalid amount", description: "Enter a positive amount to trade." });
-            return false;
-        }
-        if (amount > balance) {
-            toast({ type: "error", title: "Insufficient balance", description: `You have $${balance.toFixed(2)} available.` });
-            return false;
-        }
-
-        const market = markets.find(m => m.id === marketId);
-        if (market?.status === "RESOLVED") {
-            toast({ type: "error", title: "Market closed", description: "This market has already resolved." });
-            return false;
-        }
-
-        // Fall back to a neutral 50/50 pool if the market isn't in our local state
-        // (e.g. mock-data pages that haven't been seeded via the WebSocket).
-        const yesShares  = market?.yesShares  ?? 50;
-        const noShares   = market?.noShares   ?? 50;
-        const totalShares = yesShares + noShares;
-        const currentPrice = type === "YES"
-            ? yesShares / totalShares
-            : noShares / totalShares;
-
-        const estimatedShares = amount / currentPrice;
-
-        setBalance(prev => prev - amount);
-
-        socketRef.current?.emit("place_trade", {
-            marketId,
-            marketQuestion: market?.question ?? "Prediction market",
-            type,
-            amount,
-            price: currentPrice,
-            shares: estimatedShares,
-            userId,
-        });
-
-        toast({
-            type: "success",
-            title: `${type} order placed`,
-            description: `${estimatedShares.toFixed(2)} shares at ${(currentPrice * 100).toFixed(1)}¢`,
-        });
-
-        return true;
-    };
-
-    const closePosition = (marketId: string, type: "YES" | "NO") => {
-        const market = markets.find(m => m.id === marketId);
-        if (!market) {
-            toast({ type: "error", title: "Market not found" });
-            return false;
-        }
-        if (market.status === "RESOLVED") {
-            toast({ type: "error", title: "Market already resolved", description: "Winners are paid out automatically — no need to close." });
-            return false;
-        }
-
-        const myPositionTrades = trades.filter(t => t.userId === userId && t.marketId === marketId && t.type === type);
-        const totalShares = myPositionTrades.reduce((s, t) => s + t.shares, 0);
-        const totalInvested = myPositionTrades.reduce((s, t) => s + t.amount, 0);
-
-        if (totalShares <= 0) {
-            toast({ type: "error", title: "No position to close" });
-            return false;
-        }
-
-        const poolTotal = market.yesShares + market.noShares;
-        const currentPrice = type === "YES"
-            ? market.yesShares / poolTotal
-            : market.noShares / poolTotal;
-        const proceeds = totalShares * currentPrice;
-        const pnl = proceeds - totalInvested;
-
-        setBalance(prev => prev + proceeds);
-
-        // Emit an opposite synthetic trade to keep the server trade log consistent.
-        // The AMM / pool update is best-effort; the real backend will handle settle.
-        socketRef.current?.emit("place_trade", {
-            marketId,
-            marketQuestion: market.question,
-            type,
-            amount: -totalInvested,
-            price: currentPrice,
-            shares: -totalShares,
-            userId,
-        });
-
-        toast({
-            type: pnl >= 0 ? "success" : "info",
-            title: `Position closed`,
-            description: `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)} realized`,
-        });
-        return true;
-    };
-
-    const resolveMarket = (marketId: string, outcome: "YES" | "NO") => {
-        const socket = socketRef.current;
-        if (!socket) {
-            toast({ type: "error", title: "Not connected", description: "Reconnect and try again." });
-            return false;
-        }
-        socket.emit("resolve_market", { marketId, outcome });
-        return true;
-    };
-
-    const createNewMarket = (question: string, category: string, endTime: string) => {
-        const socket = socketRef.current;
-        if (!socket) {
-            toast({ type: "error", title: "Not connected", description: "Reconnect and try again." });
-            return false;
-        }
-        socket.emit("create_market", { question, category, endTime });
-        toast({ type: "success", title: "Market created", description: question });
-        return true;
-    };
+    const createNewMarket = useCallback(
+        async (question: string, category: string, endTime: string): Promise<boolean> => {
+            try {
+                const data = await api<{ market: MarketDTO }>("/api/admin/markets", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        question,
+                        description: question, // default description = question until UI adds a field
+                        rules: "Resolved YES if the described event occurs before endTime.",
+                        category,
+                        endTime,
+                        initialLiquidity: "10000",
+                        feeBps: 200,
+                    }),
+                });
+                setMarkets((prev) => [marketFromDTO(data.market), ...prev]);
+                toast({ type: "success", title: "Market created", description: question });
+                return true;
+            } catch (e) {
+                toast({ type: "error", title: "Create failed", description: e instanceof Error ? e.message : "Unknown error" });
+                return false;
+            }
+        },
+        [toast],
+    );
 
     return (
-        <WalletContext.Provider value={{ balance, trades, myTrades, markets, isLoading, isConnected, placeTrade, closePosition, resolveMarket, createNewMarket }}>
+        <WalletContext.Provider
+            value={{
+                balance,
+                trades,
+                myTrades,
+                markets,
+                isLoading,
+                isConnected,
+                placeTrade,
+                closePosition,
+                resolveMarket,
+                createNewMarket,
+                refreshMarkets,
+            }}
+        >
             {children}
         </WalletContext.Provider>
     );

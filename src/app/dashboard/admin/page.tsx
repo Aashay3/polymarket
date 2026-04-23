@@ -21,14 +21,14 @@ export default function AdminPage() {
         resolveMarket(marketId, outcome);
     };
 
-    const handleCreateMarket = (e: React.FormEvent) => {
+    const handleCreateMarket = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.question || !formData.endTime) {
             setStatus({ type: "error", msg: "Please fill all required fields." });
             return;
         }
-        
-        const success = createNewMarket(formData.question, formData.category, formData.endTime);
+
+        const success = await createNewMarket(formData.question, formData.category, formData.endTime);
         if (success) {
             setStatus({ type: "success", msg: "Market created successfully!" });
             setFormData({ question: "", category: "Crypto", endTime: "" });
