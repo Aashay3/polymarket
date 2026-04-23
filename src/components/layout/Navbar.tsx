@@ -9,7 +9,9 @@ import { NexoraWordmark, NexoraIcon } from "@/components/ui/NexoraLogo";
 import { useDrawer } from "@/app/context/DrawerContext";
 import { useWallet } from "@/app/context/WalletContext";
 import { useIsClient } from "@/hooks/useIsClient";
+import { useNotifications } from "@/hooks/useNotifications";
 import { AccountDrawer } from "./AccountDrawer";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 import { BitsButton } from "../ui/bits/BitsButton";
 import { SearchModal } from "../SearchModal";
 
@@ -25,6 +27,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -133,16 +137,25 @@ export function Navbar() {
           >
             <Search className="w-[18px] h-[18px]" />
           </BitsButton>
-          <BitsButton
-            variant="ghost"
-            size="sm"
-            className="w-9 px-0 relative"
-            aria-label="Notifications"
-            onClick={() => router.push("/settings/notifications")}
-          >
-            <Bell className="w-[18px] h-[18px]" />
-            <span className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background" />
-          </BitsButton>
+          <div className="relative">
+            <BitsButton
+              variant="ghost"
+              size="sm"
+              className="w-9 px-0 relative"
+              aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
+              onClick={() => setIsNotifOpen((v) => !v)}
+            >
+              <Bell className="w-[18px] h-[18px]" />
+              {isAuthed && unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 bg-primary rounded-full text-[9px] font-black text-white flex items-center justify-center ring-2 ring-background">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </BitsButton>
+            {isAuthed && (
+              <NotificationsDropdown isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
+            )}
+          </div>
           {status === "loading" ? (
             <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse ml-1" aria-hidden />
           ) : isAuthed ? (

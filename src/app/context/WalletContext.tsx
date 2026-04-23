@@ -199,6 +199,49 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         return () => { cancelled = true; };
     }, [refreshMarkets]);
 
+    // Live updates: poll /api/markets/updates every 5 seconds while the tab
+    // is visible, merging any changed markets into local state. Paused when
+    // the tab is hidden (we refresh immediately on re-focus).
+    useEffect(() => {
+        let cancelled = false;
+        let sinceIso = new Date().toISOString();
+
+        const poll = async () => {
+            if (cancelled || document.hidden) return;
+            try {
+                const data = await api<{
+                    markets: MarketDTO[];
+                    serverTime: string;
+                }>(`/api/markets/updates?since=${encodeURIComponent(sinceIso)}`);
+                sinceIso = data.serverTime;
+                if (data.markets.length > 0) {
+                    setMarkets((prev) => {
+                        const byId = new Map(prev.map((m) => [m.id, m]));
+                        for (const dto of data.markets) {
+                            byId.set(dto.id, marketFromDTO(dto));
+                        }
+                        return Array.from(byId.values());
+                    });
+                }
+                setIsConnected(true);
+            } catch {
+                setIsConnected(false);
+            }
+        };
+
+        const interval = setInterval(() => { void poll(); }, 5000);
+        const onVisible = () => {
+            if (!document.hidden) void poll();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, []);
+
     // Reset local state when the session transitions to signed-out, using
     // React's "derive from prev state during render" pattern to avoid a
     // setState-in-effect (which React 19 now flags).
