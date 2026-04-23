@@ -10,6 +10,7 @@
 
 import { ZodError, type ZodSchema } from "zod";
 import { checkRateLimit, clientIdFromRequest, type RateLimitConfig } from "./rate-limit";
+import { logger, newRequestId } from "./logger";
 
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = { ok: false; error: { code: string; message: string; details?: unknown } };
@@ -59,6 +60,29 @@ export function parseQuery<T>(req: Request, schema: ZodSchema<T>): T {
     throw new ApiError("VALIDATION_ERROR", "Invalid query params", 400, parsed.error.issues);
   }
   return parsed.data;
+}
+
+/**
+ * Reject mutating requests when the operator has flipped the kill switch.
+ *
+ * Controlled by `MAINTENANCE_MODE` env. Set to a truthy value to freeze
+ * the system: no trades, no deposits, no withdrawals, no admin writes.
+ * GET requests still work so users can see their balance / history and
+ * a banner explaining the outage.
+ *
+ * Call from any POST/PUT/DELETE handler as the very first line after auth.
+ * Operator uses this before responding to incidents — flip the flag,
+ * investigate, flip back.
+ */
+export function requireWritesEnabled(): void {
+  const flag = process.env.MAINTENANCE_MODE;
+  if (flag && flag !== "false" && flag !== "0") {
+    throw new ApiError(
+      "MAINTENANCE_MODE",
+      "The platform is in read-only maintenance mode. Trading and withdrawals are temporarily paused.",
+      503,
+    );
+  }
 }
 
 /**
@@ -117,8 +141,13 @@ export function handler<Args extends unknown[]>(
       if (e instanceof ZodError) {
         return err("VALIDATION_ERROR", "Invalid input", 400, e.issues);
       }
-      const rid = crypto.randomUUID();
-      console.error(`[api:${rid}]`, e);
+      const rid = newRequestId();
+      logger.error("unhandled route exception", {
+        rid,
+        path: new URL(req.url).pathname,
+        method: req.method,
+        err: e instanceof Error ? { name: e.name, message: e.message, stack: e.stack } : String(e),
+      });
       return err("INTERNAL", `Internal server error (ref: ${rid})`, 500);
     }
   };

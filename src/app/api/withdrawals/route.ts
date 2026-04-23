@@ -15,7 +15,7 @@
 
 import { Prisma } from "@prisma/client";
 import { Decimal } from "decimal.js";
-import { handler, ok, parseBody, parseQuery, rateLimit, ApiError } from "@/lib/api";
+import { handler, ok, parseBody, parseQuery, rateLimit, requireWritesEnabled, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
 import { RequestWithdrawalSchema, PaginationSchema } from "@/lib/schemas";
@@ -32,7 +32,16 @@ function minWithdrawal(): Decimal {
   return new Decimal(process.env.MIN_WITHDRAWAL_USDC ?? "5");
 }
 
+// Hard per-user daily cap. Caps the blast radius of a single compromised
+// account. Anything above this requires manual ops review — the request
+// is still created (PENDING) so the user sees what happened, but the
+// amount is clamped to the remaining day's budget.
+function dailyCap(): Decimal {
+  return new Decimal(process.env.DAILY_WITHDRAWAL_CAP_USDC ?? "50000");
+}
+
 export const POST = handler(async (req) => {
+  requireWritesEnabled();
   const user = await requireUser();
   rateLimit(req, RATE_LIMITS.withdrawal, "withdrawal", user.id);
   const input = await parseBody(req, RequestWithdrawalSchema);
@@ -40,6 +49,28 @@ export const POST = handler(async (req) => {
   const amount = new Decimal(input.amount);
   if (amount.lt(minWithdrawal())) {
     throw new ApiError("BELOW_MINIMUM", `Minimum withdrawal is ${minWithdrawal().toFixed(2)} USDC`, 400);
+  }
+
+  // Daily cap — sum of all non-rejected withdrawals in the last 24h plus
+  // this one must not exceed the limit. A compromised account can only
+  // drain up to the cap before ops notices.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recent = await prisma.withdrawal.aggregate({
+    where: {
+      userId: user.id,
+      requestedAt: { gte: since },
+      status: { in: ["PENDING", "COMPLETED"] },
+    },
+    _sum: { amount: true },
+  });
+  const usedToday = new Decimal((recent._sum.amount ?? 0).toString());
+  const cap = dailyCap();
+  if (usedToday.add(amount).gt(cap)) {
+    throw new ApiError("DAILY_CAP_EXCEEDED", `Daily withdrawal limit is ${cap.toFixed(0)} USDC. Used ${usedToday.toFixed(2)} in the last 24h.`, 400, {
+      usedToday: usedToday.toFixed(6),
+      cap: cap.toFixed(6),
+      remaining: cap.sub(usedToday).toFixed(6),
+    });
   }
 
   const toAddress = input.toAddress.toLowerCase();

@@ -13,6 +13,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Decimal } from "decimal.js";
+import { _resetForTests as resetRateLimit } from "@/lib/rate-limit";
 
 // Hoisted mocks — must be declared before the module-under-test imports them.
 const { authMock, txMock } = vi.hoisted(() => {
@@ -89,6 +90,7 @@ beforeEach(() => {
   Object.values(txMock).forEach((model) =>
     Object.values(model).forEach((fn) => (fn as { mockReset: () => void }).mockReset()),
   );
+  resetRateLimit();
 });
 
 // ─── Tests ──────────────────────────────────────────────────────

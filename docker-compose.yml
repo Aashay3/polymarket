@@ -1,0 +1,63 @@
+# docker-compose for self-hosting NEXORA on a single VPS.
+#
+# Usage:
+#   1. Copy .env.example -> .env and fill in values.
+#   2. `docker compose up -d`
+#   3. First-time setup: `docker compose exec app npx prisma migrate deploy`
+#      (the app does this on boot too, but running it once up front
+#      surfaces migration errors clearly.)
+#   4. Optional: `docker compose exec app npx prisma db seed` to populate
+#      starter markets + a bootstrap admin (see SEED_ADMIN_EMAIL).
+#
+# For multi-instance deployments (load-balanced), see docs/DEPLOY.md.
+# The in-process SSE bus + rate limiter need Redis to coordinate across
+# instances; the swap point is documented in src/lib/events.ts.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    # Expose port 3000 internally; in production put nginx/Caddy in front
+    # for TLS termination and HTTP/2.
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      # Container needs an explicit hostname for Next.js to bind correctly.
+      HOSTNAME: 0.0.0.0
+    # Healthcheck is already defined in the Dockerfile; compose respects it.
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Pin log driver so `docker compose logs` doesn't balloon disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nexora
+      POSTGRES_USER: nexora
+      # Password MUST come from env; never commit a default.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Bind to localhost only — never expose a DB port to the internet.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexora -d nexora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    # Named volume — survives `docker compose down` so data persists.
+    # Use a real backup strategy in production (see docs/runbooks/db-outage.md).

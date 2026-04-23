@@ -18,7 +18,7 @@
 
 import { Prisma } from "@prisma/client";
 import { Decimal } from "decimal.js";
-import { handler, ok, parseBody, parseQuery, rateLimit, ApiError } from "@/lib/api";
+import { handler, ok, parseBody, parseQuery, rateLimit, requireWritesEnabled, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
 import { PlaceTradeSchema, PaginationSchema } from "@/lib/schemas";
@@ -34,6 +34,7 @@ export const dynamic = "force-dynamic";
 const MAX_PRICE_DRIFT_BPS = 100;
 
 export const POST = handler(async (req) => {
+  requireWritesEnabled();
   const user = await requireUser();
   // Rate-limit per user, not just IP, so one account can't hog capacity.
   rateLimit(req, RATE_LIMITS.trade, "trade", user.id);

@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Decimal } from "decimal.js";
+import { _resetForTests as resetRateLimit } from "@/lib/rate-limit";
 
 const { authMock, publishMock, txMock, prismaMock } = vi.hoisted(() => {
   const txMockObj = {
@@ -15,7 +16,11 @@ const { authMock, publishMock, txMock, prismaMock } = vi.hoisted(() => {
     authMock: vi.fn(),
     publishMock: vi.fn(),
     prismaMock: {
-      withdrawal: { findMany: vi.fn() },
+      withdrawal: {
+        findMany: vi.fn(),
+        // Aggregate is used for the 24h daily-cap check outside the tx.
+        aggregate: vi.fn(),
+      },
       $transaction: vi.fn(async (fn: (tx: typeof txMockObj) => Promise<unknown>) => fn(txMockObj)),
     },
     txMock: txMockObj,
@@ -44,9 +49,15 @@ beforeEach(() => {
   authMock.mockResolvedValue(USER);
   publishMock.mockReset();
   prismaMock.withdrawal.findMany.mockReset();
+  prismaMock.withdrawal.aggregate.mockReset();
+  // Default: zero USDC withdrawn in the last 24h so the cap doesn't trip.
+  prismaMock.withdrawal.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
   Object.values(txMock).forEach((m) =>
     Object.values(m).forEach((fn) => (fn as { mockReset: () => void }).mockReset()),
   );
+  // Rate limiter is a shared singleton; reset between tests so one test's
+  // burst doesn't 429 the next.
+  resetRateLimit();
 });
 
 describe("POST /api/withdrawals", () => {
@@ -136,6 +147,36 @@ describe("POST /api/withdrawals", () => {
   it("validates input (bad address)", async () => {
     const res = await POST(req({ toAddress: "0xnotanaddress", amount: "100" }));
     expect(res.status).toBe(400);
+  });
+
+  it("rejects when the 24h withdrawal cap is already used up", async () => {
+    // Default cap is 50000 USDC; simulate user has already withdrawn 49,950
+    prismaMock.withdrawal.aggregate.mockResolvedValueOnce({ _sum: { amount: new Decimal("49950") } });
+    const res = await POST(req({ toAddress: TO, amount: "100" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe("DAILY_CAP_EXCEEDED");
+    expect(body.error.details.usedToday).toBe("49950.000000");
+    // No balance mutation happened
+    expect(txMock.withdrawal.create).not.toHaveBeenCalled();
+    expect(txMock.balance.update).not.toHaveBeenCalled();
+  });
+
+  it("allows a withdrawal that lands exactly at the cap", async () => {
+    prismaMock.withdrawal.aggregate.mockResolvedValueOnce({ _sum: { amount: new Decimal("49900") } });
+    txMock.balance.upsert.mockResolvedValueOnce({ available: new Decimal("1000") });
+    txMock.balance.update.mockResolvedValueOnce({});
+    txMock.withdrawal.create.mockResolvedValueOnce({
+      id: "w_cap", userId: USER.id, toAddress: TO, chainId: 80002,
+      amount: new Decimal("100"), status: "PENDING", txHash: null,
+      rejectionReason: null, requestedAt: new Date(), processedAt: null,
+    });
+    txMock.auditLog.create.mockResolvedValue({});
+    txMock.balance.findUnique.mockResolvedValueOnce({ available: new Decimal("900"), locked: new Decimal("100") });
+
+    // 49900 + 100 = exactly 50000 (the default cap) -> must allow
+    const res = await POST(req({ toAddress: TO, amount: "100" }));
+    expect(res.status).toBe(201);
   });
 });
 

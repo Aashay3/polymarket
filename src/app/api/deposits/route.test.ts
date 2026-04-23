@@ -11,6 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Decimal } from "decimal.js";
+import { _resetForTests as resetRateLimit } from "@/lib/rate-limit";
 
 const { authMock, prismaMock, verifyMock, publishMock, txMock } = vi.hoisted(() => {
   const txMockObj = {
@@ -76,6 +77,7 @@ beforeEach(() => {
   // Sensible defaults
   prismaMock.deposit.findUnique.mockResolvedValue(null);
   prismaMock.wallet.findMany.mockResolvedValue([{ address: USER_WALLET }]);
+  resetRateLimit();
 });
 
 describe("POST /api/deposits — idempotency + auth", () => {

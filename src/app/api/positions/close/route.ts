@@ -13,7 +13,7 @@
 
 import { Prisma } from "@prisma/client";
 import { Decimal } from "decimal.js";
-import { handler, ok, parseBody, ApiError } from "@/lib/api";
+import { handler, ok, parseBody, requireWritesEnabled, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
 import { ClosePositionSchema } from "@/lib/schemas";
@@ -24,6 +24,7 @@ import { publish } from "@/lib/events";
 export const dynamic = "force-dynamic";
 
 export const POST = handler(async (req) => {
+  requireWritesEnabled();
   const user = await requireUser();
   const input = await parseBody(req, ClosePositionSchema);
   const minProceeds = input.minProceeds ? new Decimal(input.minProceeds) : null;
