@@ -8,14 +8,20 @@
  * - `json(req)` — safe JSON body parse (rejects empty / invalid).
  */
 
-import { NextResponse } from "next/server";
 import { ZodError, type ZodSchema } from "zod";
 
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = { ok: false; error: { code: string; message: string; details?: unknown } };
 
-export function ok<T>(data: T, init?: ResponseInit): NextResponse<ApiOk<T>> {
-  return NextResponse.json({ ok: true, data }, init);
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
+  return new Response(JSON.stringify(body), {
+    ...init,
+    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+  });
+}
+
+export function ok<T>(data: T, init?: ResponseInit): Response {
+  return jsonResponse({ ok: true, data }, init);
 }
 
 export function err(
@@ -23,8 +29,8 @@ export function err(
   message: string,
   status = 400,
   details?: unknown,
-): NextResponse<ApiErr> {
-  return NextResponse.json({ ok: false, error: { code, message, details } }, { status });
+): Response {
+  return jsonResponse({ ok: false, error: { code, message, details } }, { status });
 }
 
 // Parse + validate a JSON body against a Zod schema. Throws on failure —
