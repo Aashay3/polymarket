@@ -15,13 +15,14 @@
 
 import { Prisma } from "@prisma/client";
 import { Decimal } from "decimal.js";
-import { handler, ok, parseBody, parseQuery, ApiError } from "@/lib/api";
+import { handler, ok, parseBody, parseQuery, rateLimit, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
 import { RequestWithdrawalSchema, PaginationSchema } from "@/lib/schemas";
 import { toWithdrawalDTO } from "@/lib/serialize";
 import { getChainId } from "@/lib/chain";
 import { publish } from "@/lib/events";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ function minWithdrawal(): Decimal {
 
 export const POST = handler(async (req) => {
   const user = await requireUser();
+  rateLimit(req, RATE_LIMITS.withdrawal, "withdrawal", user.id);
   const input = await parseBody(req, RequestWithdrawalSchema);
 
   const amount = new Decimal(input.amount);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { generateNonce } from "@/lib/password";
 import { EthAddressSchema } from "@/lib/schemas";
+import { checkRateLimit, clientIdFromRequest, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/siwe/nonce
@@ -17,6 +18,15 @@ import { EthAddressSchema } from "@/lib/schemas";
 const BodySchema = z.object({ address: EthAddressSchema });
 
 export async function POST(req: Request) {
+  const ip = clientIdFromRequest(req);
+  const rl = checkRateLimit(`siwe-nonce:${ip}`, RATE_LIMITS.siweNonce);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again shortly." },
+      { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil(rl.retryAfterMs / 1000))) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

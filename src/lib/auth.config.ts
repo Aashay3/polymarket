@@ -13,7 +13,32 @@ import type { NextAuthConfig } from "next-auth";
 import type { Role } from "@prisma/client";
 
 export const authConfig: NextAuthConfig = {
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    // Default 30 days. We pin explicitly so it's reviewable.
+    maxAge: 30 * 24 * 60 * 60,
+  },
+  // Required when running behind a reverse proxy (nginx, Cloudflare, etc.).
+  // Without this, Auth.js rejects tokens whose `iss` doesn't exactly match
+  // the request's Host header.
+  trustHost: true,
+  // httpOnly + sameSite=Lax + secure are Auth.js defaults already; we spell
+  // them out here so any future change is intentional + reviewable.
+  // The __Secure- prefix requires HTTPS, so we only use it in production.
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-nexora.session-token"
+          : "nexora.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+      },
+    },
+  },
   pages: {
     signIn: "/auth/signin",
     newUser: "/auth/signup",

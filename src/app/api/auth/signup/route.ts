@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, PasswordPolicyError } from "@/lib/password";
 import { SignupSchema } from "@/lib/schemas";
 import { Prisma } from "@prisma/client";
+import { checkRateLimit, clientIdFromRequest, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/signup
@@ -14,6 +15,16 @@ import { Prisma } from "@prisma/client";
  * Returns 200 + { userId } on success.
  */
 export async function POST(req: Request) {
+  // Rate limit first — don't even bother parsing JSON for abusive callers.
+  const ip = clientIdFromRequest(req);
+  const rl = checkRateLimit(`signup:${ip}`, RATE_LIMITS.signup);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many signup attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil(rl.retryAfterMs / 1000))) } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

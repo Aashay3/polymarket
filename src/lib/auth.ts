@@ -14,6 +14,7 @@ import { prisma } from "./prisma";
 import { verifyPassword } from "./password";
 import { SIWEVerifySchema } from "./schemas";
 import { authConfig } from "./auth.config";
+import { checkRateLimit, clientIdFromRequest, RATE_LIMITS } from "./rate-limit";
 import type { Role } from "@prisma/client";
 
 // Signin credentials are intentionally lenient — let bcrypt.compare do the
@@ -34,11 +35,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(raw) {
+      async authorize(raw, req) {
         const parsed = CredentialsInputSchema.safeParse(raw);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
+
+        // Rate limit by IP so password guessing doesn't scale.
+        // Auth.js v5 gives us a Request-like object on the second param.
+        const ip = req instanceof Request ? clientIdFromRequest(req) : "unknown";
+        const rl = checkRateLimit(`signin:${ip}`, RATE_LIMITS.signin);
+        if (!rl.ok) return null; // Generic failure; never hint at rate-limit to the attacker.
+
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase() },
           select: { id: true, email: true, name: true, image: true, role: true, username: true, passwordHash: true },

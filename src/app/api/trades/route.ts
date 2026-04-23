@@ -18,13 +18,14 @@
 
 import { Prisma } from "@prisma/client";
 import { Decimal } from "decimal.js";
-import { handler, ok, parseBody, parseQuery, ApiError } from "@/lib/api";
+import { handler, ok, parseBody, parseQuery, rateLimit, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
 import { PlaceTradeSchema, PaginationSchema } from "@/lib/schemas";
 import { quoteBuy } from "@/lib/amm";
 import { toMarketDTO, toTradeDTO, toPositionDTO } from "@/lib/serialize";
 import { publish } from "@/lib/events";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ const MAX_PRICE_DRIFT_BPS = 100;
 
 export const POST = handler(async (req) => {
   const user = await requireUser();
+  // Rate-limit per user, not just IP, so one account can't hog capacity.
+  rateLimit(req, RATE_LIMITS.trade, "trade", user.id);
   const input = await parseBody(req, PlaceTradeSchema);
 
   const amountDec = new Decimal(input.amount);

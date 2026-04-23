@@ -9,6 +9,7 @@
  */
 
 import { ZodError, type ZodSchema } from "zod";
+import { checkRateLimit, clientIdFromRequest, type RateLimitConfig } from "./rate-limit";
 
 export type ApiOk<T> = { ok: true; data: T };
 export type ApiErr = { ok: false; error: { code: string; message: string; details?: unknown } };
@@ -60,6 +61,26 @@ export function parseQuery<T>(req: Request, schema: ZodSchema<T>): T {
   return parsed.data;
 }
 
+/**
+ * Enforce a rate limit. Throws ApiError(TOO_MANY_REQUESTS) if the caller
+ * is over budget. Callers usually key by `${config-name}:${ip}`; for
+ * authenticated endpoints we also include the user id so a single abusive
+ * IP can't starve everyone else out.
+ */
+export function rateLimit(req: Request, config: RateLimitConfig, keyPrefix: string, subKey?: string): void {
+  const ip = clientIdFromRequest(req);
+  const key = subKey ? `${keyPrefix}:${ip}:${subKey}` : `${keyPrefix}:${ip}`;
+  const result = checkRateLimit(key, config);
+  if (!result.ok) {
+    throw new ApiError(
+      "TOO_MANY_REQUESTS",
+      "Rate limit exceeded. Try again shortly.",
+      429,
+      { retryAfterMs: result.retryAfterMs },
+    );
+  }
+}
+
 export class ApiError extends Error {
   code: string;
   status: number;
@@ -84,7 +105,14 @@ export function handler<Args extends unknown[]>(
     } catch (e) {
       if (e instanceof Response) return e; // requireUser / requireAdmin
       if (e instanceof ApiError) {
-        return err(e.code, e.message, e.status, e.details);
+        const res = err(e.code, e.message, e.status, e.details);
+        // Add the standard Retry-After header on 429s so well-behaved
+        // HTTP clients / CDNs respect the window.
+        if (e.status === 429 && typeof e.details === "object" && e.details && "retryAfterMs" in e.details) {
+          const retryAfterSec = Math.ceil(Number((e.details as { retryAfterMs: number }).retryAfterMs) / 1000);
+          res.headers.set("Retry-After", String(Math.max(1, retryAfterSec)));
+        }
+        return res;
       }
       if (e instanceof ZodError) {
         return err("VALIDATION_ERROR", "Invalid input", 400, e.issues);

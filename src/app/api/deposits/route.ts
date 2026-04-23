@@ -17,18 +17,22 @@
  */
 
 import { Prisma } from "@prisma/client";
-import { handler, ok, parseBody, parseQuery, ApiError } from "@/lib/api";
+import { handler, ok, parseBody, parseQuery, rateLimit, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
 import { SubmitDepositSchema, PaginationSchema } from "@/lib/schemas";
 import { toDepositDTO } from "@/lib/serialize";
 import { verifyUsdcDeposit, getChainId } from "@/lib/chain";
 import { publish } from "@/lib/events";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export const POST = handler(async (req) => {
   const user = await requireUser();
+  // Each submission triggers an RPC call, which is expensive. Rate-limit
+  // per user so a bad client loop doesn't blow our node's budget.
+  rateLimit(req, RATE_LIMITS.deposit, "deposit", user.id);
   const { txHash } = await parseBody(req, SubmitDepositSchema);
 
   // 1. Idempotency: has this hash been seen already?
