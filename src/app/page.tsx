@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { MarketCard } from "@/components/markets/MarketCard";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
+import { HeroStrip } from "@/components/home/HeroStrip";
+import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { Footer } from "@/components/layout/Footer";
 import { SearchModal } from "@/components/SearchModal";
 import { BitsTabs } from "@/components/ui/bits/BitsTabs";
@@ -14,19 +16,17 @@ import { useWallet, type Market } from "@/app/context/WalletContext";
 /**
  * NEXORA home feed.
  *
- * Pulls live markets from WalletContext (driven by /api/markets + SSE),
- * not the old hardcoded SECTIONS. Layout is hybrid by design:
+ * Structure:
+ *   - HeroStrip — 3 gradient category banners, full-width
+ *   - Main feed + sidebar (sidebar only on xl+ screens)
+ *   - Leaderboard
  *
- *   - mobile (<640px): single column, big cards, one market per row
- *   - tablet (640-1024px): 2-column grid
- *   - desktop (1024-1280px): 3-column grid
- *   - wide (>1280px): 4-column grid — density matches Polymarket
- *
- * Two virtual sections, computed client-side from the live data:
- *   - Hot — top 4 by volume
- *   - Closing Soon — next 4 by nearest endTime
- * Everything else flows into a "More Markets" grid below.
- * Categories filter the entire feed.
+ * Feed columns collapse so the sidebar has room on xl+:
+ *   - mobile: 1 col, no sidebar
+ *   - tablet: 2 col, no sidebar
+ *   - laptop: 3 col, no sidebar
+ *   - xl:     3 col main + sidebar rail (1080px-1279px)
+ *   - wide:   3 col main + sidebar rail (1280px+)
  */
 
 const CATEGORIES = ["All", "Crypto", "Sports", "Politics", "Tech", "Economy", "Science"];
@@ -36,8 +36,6 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<string>("All");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Live-data-driven sections. Memoised so we don't re-sort on every
-  // render of the (frequently updating) markets array.
   const { hot, closing, rest, hasAnyInCategory } = useMemo(() => {
     const filtered =
       activeTab === "All"
@@ -48,13 +46,13 @@ export default function Home() {
     const resolved = filtered.filter((m) => m.status !== "OPEN");
 
     const byVolume = [...open].sort((a, b) => b.volumeAmount - a.volumeAmount);
-    const topByVolume = byVolume.slice(0, 4);
+    const topByVolume = byVolume.slice(0, 3);
     const topIds = new Set(topByVolume.map((m) => m.id));
 
     const byEnd = [...open]
       .filter((m) => !topIds.has(m.id))
       .sort((a, b) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
-    const closingSoon = byEnd.slice(0, 4);
+    const closingSoon = byEnd.slice(0, 3);
     const closingIds = new Set(closingSoon.map((m) => m.id));
 
     const remainder = [
@@ -75,7 +73,7 @@ export default function Home() {
   return (
     <>
       <div className="space-y-10 animate-in fade-in duration-500 pb-20">
-        {/* Mobile search (desktop users use Cmd+K / header search) */}
+        {/* Mobile search */}
         <div className="md:hidden">
           <button
             type="button"
@@ -88,62 +86,77 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Header + category tabs */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-              Markets
+        {/* Display headline + hero strip */}
+        <div className="space-y-5">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.05]">
+              Markets on anything<br className="hidden md:block" />
+              <span className="text-white/40"> that matters.</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Prediction markets on crypto, sports, politics, and more.
+            <p className="text-sm md:text-base text-muted-foreground mt-3 max-w-xl">
+              Prediction markets let the crowd price uncertainty. Buy the outcome you think is right. Get paid if you&apos;re correct.
             </p>
           </div>
-          <BitsTabs
-            tabs={CATEGORIES.map((c) => ({ id: c, label: c }))}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-          />
+          <HeroStrip />
         </div>
 
-        {showingSkeleton ? (
-          <SkeletonGrid />
-        ) : !hasAnyInCategory ? (
-          <EmptyState
-            icon={Search}
-            title={`No ${activeTab.toLowerCase()} markets yet`}
-            description={
-              activeTab === "All"
-                ? "Markets will appear here as admins create them."
-                : `Nothing in ${activeTab} right now. Try another category.`
-            }
-            action={
-              activeTab !== "All"
-                ? { label: "Show all markets", onClick: () => setActiveTab("All") }
-                : undefined
-            }
-          />
-        ) : (
-          <div className="space-y-10">
-            {/* Show section headers only when the grid actually needs
-                structuring — with very few markets total, one plain grid
-                reads better than three labelled sections of 2 each. */}
-            {hot.length + closing.length + rest.length < 6 ? (
-              <FeedSection title={null} markets={[...hot, ...closing, ...rest]} />
+        {/* Main two-column region: feed + optional sidebar */}
+        <div className="grid xl:grid-cols-[1fr_320px] gap-8">
+          {/* ── Main column: tabs + feed ───────────────────────── */}
+          <div className="space-y-6 min-w-0">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <h2 className="text-xl font-bold text-white">Live markets</h2>
+              <BitsTabs
+                tabs={CATEGORIES.map((c) => ({ id: c, label: c }))}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+              />
+            </div>
+
+            {showingSkeleton ? (
+              <SkeletonGrid />
+            ) : !hasAnyInCategory ? (
+              <EmptyState
+                icon={Search}
+                title={`No ${activeTab.toLowerCase()} markets yet`}
+                description={
+                  activeTab === "All"
+                    ? "Markets will appear here as admins create them."
+                    : `Nothing in ${activeTab} right now. Try another category.`
+                }
+                action={
+                  activeTab !== "All"
+                    ? { label: "Show all markets", onClick: () => setActiveTab("All") }
+                    : undefined
+                }
+              />
             ) : (
-              <>
-                {hot.length > 0 && (
-                  <FeedSection title="Most traded" markets={hot} />
+              <div className="space-y-10">
+                {hot.length + closing.length + rest.length < 6 ? (
+                  <FeedSection title={null} markets={[...hot, ...closing, ...rest]} />
+                ) : (
+                  <>
+                    {hot.length > 0 && <FeedSection title="Most traded" markets={hot} />}
+                    {closing.length > 0 && <FeedSection title="Ending this week" markets={closing} />}
+                    {rest.length > 0 && (
+                      <FeedSection
+                        title={hot.length + closing.length > 0 ? "All markets" : null}
+                        markets={rest}
+                      />
+                    )}
+                  </>
                 )}
-                {closing.length > 0 && (
-                  <FeedSection title="Ending this week" markets={closing} />
-                )}
-                {rest.length > 0 && (
-                  <FeedSection title={hot.length + closing.length > 0 ? "All markets" : null} markets={rest} />
-                )}
-              </>
+              </div>
             )}
           </div>
-        )}
+
+          {/* ── Sidebar (xl+ only) ──────────────────────────────── */}
+          <div className="hidden xl:block">
+            <div className="sticky top-[80px]">
+              <HomeSidebar />
+            </div>
+          </div>
+        </div>
 
         <LeaderboardSection />
       </div>
@@ -163,12 +176,9 @@ function FeedSection({
 }) {
   return (
     <section className="space-y-4">
-      {title && (
-        <h2 className="text-base font-semibold text-white/70">{title}</h2>
-      )}
-
-      {/* Hybrid grid: mobile 1 col · tablet 2 · laptop 3 · wide 4 */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {title && <h3 className="text-base font-semibold text-white/70">{title}</h3>}
+      {/* Fewer columns when sidebar is present — max 3 in main column */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {markets.map((m) => (
           <MarketCard
             key={m.id}
@@ -176,8 +186,6 @@ function FeedSection({
             slug={m.slug}
             title={m.question}
             category={m.category}
-            // Omit volume entirely when we don't have it — better than a
-            // placeholder character on every single card.
             volume={m.volumeAmount > 0 ? `$${formatCompact(m.volumeAmount)} vol` : undefined}
             yesPrice={m.yesPrice}
             noPrice={m.noPrice}
@@ -196,8 +204,8 @@ function FeedSection({
 
 function SkeletonGrid() {
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
         <MarketCardSkeleton key={i} />
       ))}
     </div>

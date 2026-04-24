@@ -256,6 +256,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             } catch { /* ignore */ }
         });
 
+        // Every trade (anyone's) lands here. We keep the last 20 as a
+        // rolling ticker for the home-page Recent Activity widget. The
+        // userId is already anonymised by the server for public events —
+        // we just display it as "user_xxxxxx".
+        source.addEventListener("trade.executed", (e) => {
+            try {
+                const payload = JSON.parse((e as MessageEvent).data) as {
+                    trade: TradeDTO;
+                    market: MarketDTO;
+                };
+                const t = tradeFromDTO(payload.trade, payload.market.question);
+                setTrades((prev) => [t, ...prev].slice(0, 50));
+            } catch { /* ignore */ }
+        });
+
         return () => {
             source.close();
         };
