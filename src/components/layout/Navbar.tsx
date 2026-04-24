@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Menu, Search, Bell, ChevronDown, Wallet, LogIn } from "lucide-react";
+import { Menu, Search, Bell, Wallet, LogIn } from "lucide-react";
 import { NexoraWordmark, NexoraIcon } from "@/components/ui/NexoraLogo";
 import { useDrawer } from "@/app/context/DrawerContext";
 import { useWallet } from "@/app/context/WalletContext";
@@ -12,6 +12,8 @@ import { useIsClient } from "@/hooks/useIsClient";
 import { useNotifications } from "@/hooks/useNotifications";
 import { AccountDrawer } from "./AccountDrawer";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { CurrencyPicker } from "./CurrencyPicker";
+import { CryptoIcon } from "@/components/ui/CryptoIcon";
 import { BitsButton } from "../ui/bits/BitsButton";
 import { SearchModal } from "../SearchModal";
 
@@ -97,32 +99,26 @@ export function Navbar() {
 
       {/* Right Section */}
       <div className="flex items-center gap-2 md:gap-4 ml-auto">
-        {/* Desktop Wallet Pill */}
-        <div className="hidden sm:flex items-center bg-[#121217] border border-white/10 rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-1.5 border-r border-white/10 group cursor-pointer hover:bg-white/2 transition-colors">
-            <span className="text-sm font-bold text-white">
-              ₹{mounted ? balance.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "0.00"}
-            </span>
-            <span className="text-base" title="INR">🇮🇳</span>
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-white transition-colors" />
-          </div>
+        {/* Desktop: USDC crypto picker (with dropdown) + Wallet CTA */}
+        <div className="hidden sm:flex items-center gap-2">
+          <CurrencyPicker />
           <BitsButton
             onClick={() => router.push("/wallet")}
-            className="h-auto py-1.5 px-4 rounded-none border-none bg-primary hover:bg-primary/90"
+            className="h-9 px-4 rounded-xl border-none bg-primary hover:bg-primary/90"
           >
             Wallet
           </BitsButton>
         </div>
 
-        {/* Mobile Wallet Pill (compact) */}
+        {/* Mobile: compact USDC balance chip */}
         <button
           onClick={() => router.push("/wallet")}
           aria-label="Open wallet"
           className="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#121217] border border-white/10 hover:bg-white/5 transition-colors"
         >
-          <Wallet className="w-3.5 h-3.5 text-primary" />
+          <CryptoIcon symbol="USDC" size={16} />
           <span className="text-xs font-bold text-white tabular-nums">
-            ₹{mounted ? balance.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "0"}
+            {mounted ? balance.toFixed(0) : "0"}
           </span>
         </button>
 
