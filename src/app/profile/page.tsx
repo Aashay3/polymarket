@@ -171,7 +171,7 @@ export default function ProfilePage() {
             <span className="text-[10px] font-mono text-muted-foreground">{xp} / {nextLvl.xpRequired} XP</span>
           </div>
           <div className="h-1.5 bg-white/6 rounded-full overflow-hidden">
-            <div className="h-full bg-[#FF6A3D] rounded-full transition-all" style={{ width: `${xpPct}%` }} />
+            <div className="h-full bg-[#8B5CF6] rounded-full transition-all" style={{ width: `${xpPct}%` }} />
           </div>
           <p className="text-[10px] text-muted-foreground mt-1">{nextLvl.xpRequired - xp} XP to {nextLvl.name}</p>
         </div>
@@ -186,7 +186,7 @@ export default function ProfilePage() {
             <div className="flex bg-white/5 rounded-lg p-0.5 gap-0.5">
               {(["daily", "weekly"] as const).map(m => (
                 <button key={m} onClick={() => setChartMode(m)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${chartMode === m ? "bg-[#FF6A3D] text-white" : "text-muted-foreground hover:text-white"}`}>
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors capitalize ${chartMode === m ? "bg-[#8B5CF6] text-white" : "text-muted-foreground hover:text-white"}`}>
                   {m}
                 </button>
               ))}

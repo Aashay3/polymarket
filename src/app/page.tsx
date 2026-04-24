@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { MarketCard } from "@/components/markets/MarketCard";
+import { CategoryChips } from "@/components/markets/CategoryChips";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
 import { HeroStrip } from "@/components/home/HeroStrip";
 import { HomeSidebar } from "@/components/home/HomeSidebar";
 import { Footer } from "@/components/layout/Footer";
 import { SearchModal } from "@/components/SearchModal";
-import { BitsTabs } from "@/components/ui/bits/BitsTabs";
 import { MarketCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useWallet, type Market } from "@/app/context/WalletContext";
@@ -28,8 +28,6 @@ import { useWallet, type Market } from "@/app/context/WalletContext";
  *   - xl:     3 col main + sidebar rail (1080px-1279px)
  *   - wide:   3 col main + sidebar rail (1280px+)
  */
-
-const CATEGORIES = ["All", "Crypto", "Sports", "Politics", "Tech", "Economy", "Science"];
 
 export default function Home() {
   const { markets, isLoading } = useWallet();
@@ -104,14 +102,8 @@ export default function Home() {
         <div className="grid xl:grid-cols-[1fr_320px] gap-8">
           {/* ── Main column: tabs + feed ───────────────────────── */}
           <div className="space-y-6 min-w-0">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <h2 className="text-xl font-bold text-white">Live markets</h2>
-              <BitsTabs
-                tabs={CATEGORIES.map((c) => ({ id: c, label: c }))}
-                activeTab={activeTab}
-                onChange={setActiveTab}
-              />
-            </div>
+            <h2 className="text-xl font-bold text-white">Live markets</h2>
+            <CategoryChips active={activeTab} onChange={setActiveTab} />
 
             {showingSkeleton ? (
               <SkeletonGrid />

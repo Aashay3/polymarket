@@ -105,7 +105,7 @@ export default function WalletPage() {
         </div>
         <p className="text-xs text-muted-foreground mb-6 font-mono">Available for trading</p>
         <div className="h-14 mb-6">
-          <Sparkline data={sparkData} color="#FF6A3D" strokeWidth={1.5} fillOpacity={0.12} />
+          <Sparkline data={sparkData} color="#8B5CF6" strokeWidth={1.5} fillOpacity={0.12} />
         </div>
         <div className="h-px bg-white/6 mb-6" />
         <div className="grid grid-cols-3 gap-3">
@@ -175,7 +175,7 @@ export default function WalletPage() {
 
       {toast && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[#121217] border border-white/15 text-white text-sm font-semibold px-5 py-3 rounded-2xl flex items-center gap-2">
-          <Check className="w-4 h-4 text-[#FF6A3D]" /> {toast}
+          <Check className="w-4 h-4 text-[#8B5CF6]" /> {toast}
         </div>
       )}
     </div>

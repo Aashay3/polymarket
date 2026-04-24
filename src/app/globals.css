@@ -3,11 +3,16 @@
 @theme {
   --color-border: rgba(255, 255, 255, 0.08);
   --color-input: #1a1a20;
-  --color-ring: #FF6A3D;
+  --color-ring: #8B5CF6;
   --color-background: #0B0B0F;
   --color-foreground: #ffffff;
 
-  --color-primary: #FF6A3D;
+  /*
+   * Primary = violet/purple. Distinctive (not Polymarket blue, not
+   * Kalshi monochrome). Still reserves green/red for semantic yes/no
+   * outcomes so they never get confused with brand colour.
+   */
+  --color-primary: #8B5CF6;
   --color-primary-foreground: #ffffff;
 
   --color-secondary: #1a1a20;
@@ -154,10 +159,10 @@ body {
    */
   @keyframes nexora-pulse {
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(255, 106, 61, 0.18);
+      box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.18);
     }
     50% {
-      box-shadow: 0 0 0 3px rgba(255, 106, 61, 0.06);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.06);
     }
   }
 
@@ -173,6 +178,16 @@ body {
 
   .nexora-live-dot {
     animation: nexora-dot 1.6s ease-in-out infinite;
+  }
+
+  /* Hide scrollbars on horizontal carousels (category chips, activity
+     tickers, etc.) without disabling scroll itself. Works cross-browser. */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 

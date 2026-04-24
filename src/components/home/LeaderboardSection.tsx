@@ -35,7 +35,7 @@ export function LeaderboardSection() {
                 onClick={() => setTimeframe(t)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   timeframe === t 
-                    ? "bg-[#FF6A3D] text-white" 
+                    ? "bg-[#8B5CF6] text-white" 
                     : "text-muted-foreground hover:text-white"
                 }`}
               >

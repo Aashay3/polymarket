@@ -33,7 +33,7 @@ export function GlassCard({ children, className = "", hover = false, onClick }: 
         .join(" ")}
     >
       {/* Subtle 135deg Background Gradient Hint */}
-      <div className="absolute inset-0 bg-linear-135 from-[#FF6A3D]/12 to-transparent opacity-60 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-135 from-[#8B5CF6]/12 to-transparent opacity-60 pointer-events-none" />
       
       {/* Subtle Light Reflection (Top-Left) */}
       <div className="absolute inset-0 bg-linear-to-br from-white/4 to-transparent pointer-events-none" />
