@@ -14,7 +14,7 @@ function SignInForm() {
   const router = useRouter();
   const search = useSearchParams();
   const { toast } = useToast();
-  const callbackUrl = search.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = search.get("callbackUrl") ?? "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);

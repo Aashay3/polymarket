@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   Wallet, PieChart, History, Activity,
-  BarChart3, Trophy, Settings, HelpCircle, LogOut,
+  Trophy, Settings, HelpCircle, LogOut,
   ChevronRight
 } from "lucide-react";
 import { useWallet } from "@/app/context/WalletContext";
@@ -25,7 +25,6 @@ const MENU_ITEMS = [
   { name: "Wallet",       href: "/wallet",              icon: Wallet },
   { name: "Transactions", href: "/wallet#transactions", icon: History },
   { name: "My Trades",    href: "/dashboard/activity",  icon: Activity },
-  { name: "Analytics",    href: "/dashboard",           icon: BarChart3 },
   { name: "Leaderboard",  href: "/leaderboard",         icon: Trophy },
 ];
 

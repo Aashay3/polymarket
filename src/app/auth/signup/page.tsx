@@ -48,7 +48,7 @@ export default function SignUpPage() {
       toast({ type: "success", title: "Account created", description: "Signing you in…" });
       const s = await signIn("credentials", { email, password, redirect: false });
       if (s?.ok) {
-        router.push("/dashboard");
+        router.push("/");
         router.refresh();
       } else {
         router.push("/auth/signin");

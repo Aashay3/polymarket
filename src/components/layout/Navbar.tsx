@@ -65,7 +65,7 @@ export function Navbar() {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <div className="md:hidden">
             <NexoraIcon size={24} />
           </div>
