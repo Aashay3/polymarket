@@ -74,23 +74,17 @@ export function Navbar() {
           </div>
         </Link>
 
-        {mounted && (
-          <div
-            className="hidden sm:flex items-center gap-1.5 ml-1"
+        {/* Connection status surfaces only when something is wrong —
+            nobody needs a "LIVE" badge in their face on every page load. */}
+        {mounted && !isConnected && !isLoading && (
+          <span
+            className="hidden sm:inline-flex items-center gap-1.5 ml-1 text-[11px] font-medium text-no/80"
             role="status"
             aria-live="polite"
-            aria-label={isConnected ? "Connected" : isLoading ? "Connecting" : "Offline"}
-            title={isConnected ? "Live" : isLoading ? "Connecting…" : "Offline — reconnecting"}
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isConnected ? "bg-yes animate-pulse" : isLoading ? "bg-amber-400" : "bg-no"
-              }`}
-            />
-            <span className="text-[9px] font-bold tracking-widest uppercase text-white/40">
-              {isConnected ? "Live" : isLoading ? "…" : "Offline"}
-            </span>
-          </div>
+            <span className="w-1.5 h-1.5 rounded-full bg-no" />
+            Reconnecting…
+          </span>
         )}
       </div>
 

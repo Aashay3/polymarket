@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Flame, Clock } from "lucide-react";
+import { Search } from "lucide-react";
 import { MarketCard } from "@/components/markets/MarketCard";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
 import { Footer } from "@/components/layout/Footer";
@@ -91,11 +91,11 @@ export default function Home() {
         {/* Header + category tabs */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
-              Live Markets
+            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+              Markets
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">
-              Trade the outcome, not the hype.
+            <p className="text-sm text-muted-foreground mt-1">
+              Prediction markets on crypto, sports, politics, and more.
             </p>
           </div>
           <BitsTabs
@@ -114,7 +114,7 @@ export default function Home() {
             description={
               activeTab === "All"
                 ? "Markets will appear here as admins create them."
-                : `Nothing live in ${activeTab} right now. Try another category.`
+                : `Nothing in ${activeTab} right now. Try another category.`
             }
             action={
               activeTab !== "All"
@@ -123,29 +123,24 @@ export default function Home() {
             }
           />
         ) : (
-          <div className="space-y-12">
-            {hot.length > 0 && (
-              <FeedSection
-                title="Hot"
-                icon={<Flame className="w-4 h-4 text-primary" />}
-                markets={hot}
-              />
-            )}
-
-            {closing.length > 0 && (
-              <FeedSection
-                title="Closing Soon"
-                icon={<Clock className="w-4 h-4 text-amber-400" />}
-                markets={closing}
-              />
-            )}
-
-            {rest.length > 0 && (
-              <FeedSection
-                title="More Markets"
-                icon={null}
-                markets={rest}
-              />
+          <div className="space-y-10">
+            {/* Show section headers only when the grid actually needs
+                structuring — with very few markets total, one plain grid
+                reads better than three labelled sections of 2 each. */}
+            {hot.length + closing.length + rest.length < 6 ? (
+              <FeedSection title={null} markets={[...hot, ...closing, ...rest]} />
+            ) : (
+              <>
+                {hot.length > 0 && (
+                  <FeedSection title="Most traded" markets={hot} />
+                )}
+                {closing.length > 0 && (
+                  <FeedSection title="Ending this week" markets={closing} />
+                )}
+                {rest.length > 0 && (
+                  <FeedSection title={hot.length + closing.length > 0 ? "All markets" : null} markets={rest} />
+                )}
+              </>
             )}
           </div>
         )}
@@ -161,25 +156,18 @@ export default function Home() {
 
 function FeedSection({
   title,
-  icon,
   markets,
 }: {
-  title: string;
-  icon: React.ReactNode;
+  title: string | null;
   markets: Market[];
 }) {
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[11px] font-black text-white/50 uppercase tracking-[0.22em] flex items-center gap-2">
-          {icon}
-          {title}
-          <span className="ml-1 text-white/25 font-mono font-bold">{markets.length}</span>
-        </h2>
-      </div>
+      {title && (
+        <h2 className="text-base font-semibold text-white/70">{title}</h2>
+      )}
 
-      {/* Hybrid grid:
-          mobile 1 col · tablet 2 · desktop 3 · wide 4 */}
+      {/* Hybrid grid: mobile 1 col · tablet 2 · laptop 3 · wide 4 */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {markets.map((m) => (
           <MarketCard
@@ -188,9 +176,9 @@ function FeedSection({
             slug={m.slug}
             title={m.question}
             category={m.category}
-            // We don't have per-market volume yet — fall back to "$—" so the
-            // meta strip stays visually balanced. Phase 9: denormalized vol.
-            volume={m.volumeAmount ? `$${formatCompact(m.volumeAmount)}` : "$—"}
+            // Omit volume entirely when we don't have it — better than a
+            // placeholder character on every single card.
+            volume={m.volumeAmount > 0 ? `$${formatCompact(m.volumeAmount)} vol` : undefined}
             yesPrice={m.yesPrice}
             noPrice={m.noPrice}
             yesChangeBps={m.yesChangeBps}
@@ -208,18 +196,9 @@ function FeedSection({
 
 function SkeletonGrid() {
   return (
-    <div className="space-y-12">
-      {["Hot", "Closing Soon"].map((label) => (
-        <section key={label} className="space-y-4">
-          <h2 className="text-[11px] font-black text-white/50 uppercase tracking-[0.22em]">
-            {label}
-          </h2>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <MarketCardSkeleton key={i} />
-            ))}
-          </div>
-        </section>
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <MarketCardSkeleton key={i} />
       ))}
     </div>
   );

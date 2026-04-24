@@ -72,12 +72,12 @@ export function PriceBlock({
 function renderTrend(changeBps: number | null | undefined, size: "sm" | "md" | "lg") {
   const iconSize = size === "lg" ? "w-3.5 h-3.5" : "w-3 h-3";
 
-  if (changeBps === null || changeBps === undefined) {
-    return <span className="opacity-60 font-bold">NEW</span>;
-  }
-  if (changeBps === 0) {
-    return <span className="opacity-60 font-bold">FLAT</span>;
-  }
+  // Don't scream "NEW" / "FLAT" on every single card — that repetition
+  // is what makes the whole grid look templated. Only show a trend
+  // when there's a real move worth reporting (>= 0.5%).
+  if (changeBps === null || changeBps === undefined) return null;
+  if (Math.abs(changeBps) < 50) return null; // under 0.5% -> no label
+
   const positive = changeBps > 0;
   const pct = (Math.abs(changeBps) / 100).toFixed(1);
   return (

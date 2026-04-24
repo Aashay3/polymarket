@@ -1,37 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { TrendingUp, Clock } from "lucide-react";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { ProbabilityBar } from "./ProbabilityBar";
 import { PriceBlock } from "./PriceBlock";
 
 /**
- * NEXORA MarketCard — the signature element.
+ * NEXORA MarketCard.
  *
- * Layout:
- *   ┌─────────────────────────────────────┐
- *   │ [CATEGORY]      [volume]  ● LIVE   │   ← meta strip
- *   │                                     │
- *   │ Will Bitcoin hit $100k by Dec?     │   ← question
- *   │                                     │
- *   │ [======== probability bar ========] │   ← animated, flashes on SSE
- *   │                                     │
- *   │ ┌────────────┐ ┌────────────┐      │
- *   │ │    58¢     │ │    42¢     │      │   ← HUGE signature prices
- *   │ │ YES ↗3.2%  │ │ NO  ↘3.2%  │      │      with integrated trend
- *   │ └────────────┘ └────────────┘      │
- *   └─────────────────────────────────────┘
+ * Deliberately restrained meta strip — category + optional volume on
+ * the left, optional "ending soon" hint on the right. No status badge
+ * (everything in the open grid is open; announcing "LIVE" on every
+ * card is noise). Resolved markets replace the price blocks with a
+ * clear winner panel.
  *
- * On OPEN markets the whole card gets a subtle 2.4s orange pulse-ring so
- * at a glance you see "this is live". RESOLVED / CLOSED markets are static.
+ * The liveness signal is the ProbabilityBar's flash-on-trade; no
+ * resting pulse animation — if every card pulses, none does.
  */
 export interface MarketCardProps {
   id?: string;
   slug?: string;
   title: string;
   category: string;
-  volume: string;
+  /** Display string for volume. Omit (undefined) to hide the row entirely. */
+  volume?: string;
   yesPrice: number; // accepts fractional 0..1 OR cents 0..100
   noPrice: number;
   yesChangeBps?: number | null;
@@ -73,20 +65,17 @@ export function MarketCard({
   const yesFrac = yesPrice > 1 ? yesPrice / 100 : yesPrice;
   const noFrac = noPrice > 1 ? noPrice / 100 : noPrice;
 
-  const isLive = status === "OPEN";
   const isResolved = status === "RESOLVED";
-  const endLabel = endTime ? formatRelativeEnd(endTime) : null;
+  const endHint = endTime ? endingHint(endTime) : null;
 
   return (
     <BitsCard
       hover
       onClick={handleCardClick}
-      className={`group relative p-5 flex flex-col h-full cursor-pointer border-white/5 hover:border-white/15 transition-all ${
-        isLive ? "nexora-pulse" : ""
-      }`}
+      className="group relative p-5 flex flex-col h-full cursor-pointer border-white/5 hover:border-white/15 transition-colors"
     >
       {/* Meta strip */}
-      <div className="flex items-start justify-between mb-3 gap-2">
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5 min-w-0">
           {image && (
             <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/5 border border-white/10 shrink-0">
@@ -97,39 +86,22 @@ export function MarketCard({
               />
             </div>
           )}
-          <div className="min-w-0">
-            <p className="text-[10px] font-black text-white/50 tracking-[0.18em] uppercase truncate">
-              {category}
-            </p>
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-white/40">
-              <TrendingUp className="w-2.5 h-2.5 shrink-0" />
-              <span className="truncate">{volume}</span>
-            </div>
+          <div className="min-w-0 flex items-baseline gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">{category}</span>
+            {volume && (
+              <>
+                <span className="text-white/20">·</span>
+                <span className="text-xs text-white/40">{volume}</span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="shrink-0 flex flex-col items-end gap-1">
-          {isLive ? (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black tracking-[0.18em] uppercase text-primary">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary nexora-live-dot" />
-              Live
-            </span>
-          ) : isResolved ? (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black tracking-[0.18em] uppercase text-muted-foreground">
-              {winningOutcome ? `${winningOutcome} WON` : "Resolved"}
-            </span>
-          ) : (
-            <span className="text-[9px] font-black tracking-[0.18em] uppercase text-muted-foreground">
-              {status}
-            </span>
-          )}
-          {endLabel && (
-            <span className="flex items-center gap-1 text-[9px] font-bold text-white/30">
-              <Clock className="w-2.5 h-2.5" />
-              {endLabel}
-            </span>
-          )}
-        </div>
+        {endHint && (
+          <span className={`shrink-0 text-[11px] font-medium ${endHint.urgent ? "text-amber-400" : "text-white/30"}`}>
+            {endHint.label}
+          </span>
+        )}
       </div>
 
       {/* Question */}
@@ -137,19 +109,17 @@ export function MarketCard({
         {title}
       </h3>
 
-      {/* Animated probability bar — flashes on SSE updates */}
+      {/* Probability bar — subtle at rest, flashes on live trades via SSE */}
       <div className="mb-4">
         <ProbabilityBar yesPrice={yesFrac} noPrice={noFrac} size="sm" showLabels={false} />
       </div>
 
-      {/* Signature price blocks */}
+      {/* Outcome blocks, or resolved panel */}
       {isResolved ? (
         <div className="mt-auto rounded-2xl border border-white/10 bg-white/3 py-4 text-center">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-1">
-            Resolved
-          </p>
-          <p className={`text-lg font-black ${winningOutcome === "YES" ? "text-yes" : "text-no"}`}>
-            {winningOutcome ?? "VOID"}
+          <p className="text-xs text-muted-foreground mb-1">Resolved</p>
+          <p className={`text-base font-bold ${winningOutcome === "YES" ? "text-yes" : "text-no"}`}>
+            {winningOutcome ?? "Voided"}
           </p>
         </div>
       ) : (
@@ -177,18 +147,27 @@ export function MarketCard({
 }
 
 /**
- * "2d" / "3h" / "45m" relative future time. Falls back to date for >14d.
+ * Show time-remaining ONLY when meaningful:
+ *   - under 1h:  "43m left"   (amber, urgent)
+ *   - under 24h: "7h left"    (amber)
+ *   - under 7d:  "3d left"    (neutral)
+ *   - further:   nothing      (a market ending in 8 months doesn't
+ *                               need a badge on the card)
  */
-function formatRelativeEnd(iso: string): string | null {
+function endingHint(iso: string): { label: string; urgent: boolean } | null {
   const end = new Date(iso).getTime();
   if (Number.isNaN(end)) return null;
   const diff = end - Date.now();
-  if (diff <= 0) return "ended";
+  if (diff <= 0) return { label: "ended", urgent: false };
+
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return { label: `${mins}m left`, urgent: true };
+
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
+  if (hrs < 24) return { label: `${hrs}h left`, urgent: true };
+
   const days = Math.floor(hrs / 24);
-  if (days < 14) return `${days}d`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (days < 7) return { label: `${days}d left`, urgent: false };
+
+  return null;
 }
