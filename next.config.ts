@@ -48,6 +48,9 @@ const nextConfig: NextConfig = {
   // drop everything in node_modules except what's actually linked.
   // Cuts prod image size from ~1.2GB to ~180MB.
   output: "standalone",
+  // Hide the bottom-left "N" dev indicator in local development. It
+  // doesn't render in production builds regardless.
+  devIndicators: false,
   async headers() {
     return [
       {
