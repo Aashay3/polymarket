@@ -19,7 +19,6 @@ import {
   User,
   Settings as SettingsIcon,
   HelpCircle,
-  Globe,
   LogOut,
   MessageCircle,
   LifeBuoy,
@@ -32,6 +31,7 @@ import {
   LEFT_RAIL_COLLAPSED_PX,
   LEFT_RAIL_EXPANDED_PX,
 } from "@/app/context/LeftRailContext";
+import { LanguagePicker } from "./LanguagePicker";
 
 /**
  * NEXORA left rail — the only side navigation in the app.
@@ -265,13 +265,7 @@ function CollapsedView({
         </SocialIcon>
       </div>
 
-      <button
-        type="button"
-        title="Language"
-        className="shrink-0 w-11 h-11 rounded-full bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
-      >
-        <Globe className="w-[18px] h-[18px]" />
-      </button>
+      <LanguagePicker variant="compact" />
 
       {session && (
         <button
@@ -434,13 +428,7 @@ function ExpandedView({
 
       {/* Language + Sign out */}
       <div className="border-t border-white/5 p-3 shrink-0 space-y-2">
-        <button
-          type="button"
-          className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white/80 transition-colors"
-        >
-          <Globe className="w-3.5 h-3.5" />
-          English
-        </button>
+        <LanguagePicker variant="wide" />
 
         {session && (
           <button
