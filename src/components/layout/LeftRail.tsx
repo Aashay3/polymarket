@@ -76,7 +76,6 @@ const PRIMARY_ITEMS: NavItem[] = [
     name: "Sports",
     href: "/sports",
     icon: Trophy,
-    image: "/brand/icons/sports.png",
     children: [
       { name: "Top",         href: "/sports",                  icon: Flame        },
       { name: "Live",        href: "/sports?tab=live",         icon: Radio        },
