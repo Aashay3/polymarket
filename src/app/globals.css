@@ -180,6 +180,18 @@ body {
     animation: nexora-dot 1.6s ease-in-out infinite;
   }
 
+  /* Live trade marquee — TradeTicker uses this. We render the row
+     twice and scroll exactly half (-50%) so the loop is seamless.
+     Pauses on the parent's hover via the [animation-play-state:paused]
+     utility in the component. */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .animate-marquee {
+    animation: marquee 60s linear infinite;
+  }
+
   /* Hide scrollbars on horizontal carousels (category chips, activity
      tickers, etc.) without disabling scroll itself. Works cross-browser. */
   .scrollbar-hide {

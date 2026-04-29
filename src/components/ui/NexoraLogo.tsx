@@ -1,37 +1,70 @@
-// NEXORA brand SVG logo mark — solid inline fills, always visible on dark bg
-export function NexoraIcon({ size = 32 }: { size?: number }) {
+/**
+ * NEXORA brand logos.
+ *
+ * Three variants, each fed from a PNG in /public/brand/ (drop the file
+ * in there, done). Using plain <img> rather than next/image so we
+ * don't pay the image-optimiser overhead on tiny always-on header
+ * assets.
+ *
+ *   NexoraIcon     — square "N" mark only; use anywhere compact.
+ *   NexoraWordmark — horizontal "nexora" wordmark; use in the nav.
+ *   NexoraLogoFull — stacked icon + wordmark; use on hero / auth pages.
+ */
+
+interface LogoProps {
+  size?: number;
+  className?: string;
+}
+
+export function NexoraIcon({ size = 32, className = "" }: LogoProps) {
   return (
-    <svg
+    <img
+      src="/brand/nexora-icon.png"
+      alt="Nexora"
       width={size}
       height={size}
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Left zigzag blade */}
-      <path d="M6 40 L18 20 L26 30 L20 40Z" fill="#FF541B" />
-      {/* Right upward arrow body */}
-      <path d="M22 36 L32 12 L44 12 L44 19 L36 19 L26 40Z" fill="#FF7A3D" />
-      {/* Arrow tip highlight */}
-      <path d="M32 12 L44 12 L38 6Z" fill="#FFB07A" />
-      {/* Inner highlight slash */}
-      <path d="M24 28 L30 16 L34 16 L28 28Z" fill="white" opacity="0.22" />
-    </svg>
+      className={`select-none object-contain ${className}`}
+      draggable={false}
+    />
   );
 }
 
-export function NexoraWordmark({ className = "" }: { className?: string }) {
+/**
+ * Horizontal wordmark used in the navbar (md+).
+ * `size` controls the rendered height; width scales to preserve the
+ * ~4:1 aspect ratio of the asset.
+ */
+export function NexoraWordmark({
+  className = "",
+  size = 26,
+}: LogoProps) {
   return (
-    <div className={`flex items-center gap-2.5 ${className}`}>
-      <NexoraIcon size={30} />
-      <span
-        className="font-black tracking-[0.14em] text-white uppercase select-none"
-        style={{
-          fontSize: "1.05rem",
-        }}
-      >
-        NEXORA
-      </span>
-    </div>
+    <img
+      src="/brand/nexora-wordmark.png"
+      alt="Nexora"
+      height={size}
+      // Width set via style so the browser can scale proportionally
+      // even before the asset has loaded — prevents layout shift.
+      style={{ height: size, width: "auto" }}
+      className={`select-none object-contain ${className}`}
+      draggable={false}
+    />
+  );
+}
+
+/**
+ * Stacked icon + wordmark. For auth pages / hero placements where the
+ * brand needs room to breathe.
+ */
+export function NexoraLogoFull({ size = 96, className = "" }: LogoProps) {
+  return (
+    <img
+      src="/brand/nexora-full.png"
+      alt="Nexora"
+      width={size}
+      height={size}
+      className={`select-none object-contain ${className}`}
+      draggable={false}
+    />
   );
 }

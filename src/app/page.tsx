@@ -1,17 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronRight, Search } from "lucide-react";
 import { MarketCard } from "@/components/markets/MarketCard";
 import { CategoryChips } from "@/components/markets/CategoryChips";
 import { LeaderboardSection } from "@/components/home/LeaderboardSection";
 import { HeroStrip } from "@/components/home/HeroStrip";
-import { HomeSidebar } from "@/components/home/HomeSidebar";
+import { CategoryCarousel } from "@/components/home/CategoryCarousel";
+import { TradeTicker } from "@/components/home/TradeTicker";
+import { TopMovers } from "@/components/home/TopMovers";
+import { ClosingToday } from "@/components/home/ClosingToday";
+import { CoinFlip } from "@/components/home/CoinFlip";
+import { EditorialPicks } from "@/components/home/EditorialPicks";
+import { CrowdVsReality } from "@/components/home/CrowdVsReality";
+import { ForYou } from "@/components/home/ForYou";
+import { PositionsMoving } from "@/components/home/PositionsMoving";
+import { StreakBanner } from "@/components/home/StreakBanner";
 import { Footer } from "@/components/layout/Footer";
 import { SearchModal } from "@/components/SearchModal";
 import { MarketCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useWallet, type Market } from "@/app/context/WalletContext";
+
+// Order in which category sections appear under "All". Mirrors the
+// CategoryCarousel above so the page reads top-to-bottom consistently.
+const CATEGORY_ORDER = [
+  "Politics",
+  "Sports",
+  "Crypto",
+  "Tech",
+  "Economy",
+  "Science",
+  "Entertainment",
+  "World",
+];
 
 /**
  * NEXORA home feed.
@@ -30,11 +54,53 @@ import { useWallet, type Market } from "@/app/context/WalletContext";
  */
 
 export default function Home() {
+  // useSearchParams needs a Suspense boundary so the page can stream
+  // its initial render even when the param resolves later. The boundary
+  // is invisible — same skeleton the feed shows on first paint.
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
+  );
+}
+
+function HomeInner() {
   const { markets, isLoading } = useWallet();
-  const [activeTab, setActiveTab] = useState<string>("All");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const { hot, closing, rest, hasAnyInCategory } = useMemo(() => {
+  // Active category is driven by the URL `?category=X` so links from
+  // the hero, category carousel, and per-section "View all" land on a
+  // genuinely filtered feed. Unknown / missing param falls back to "All".
+  const categoryParam = searchParams.get("category");
+  const activeTab = useMemo(() => {
+    if (!categoryParam) return "All";
+    const found = [...CATEGORY_ORDER].find(
+      (c) => c.toLowerCase() === categoryParam.toLowerCase(),
+    );
+    return found ?? "All";
+  }, [categoryParam]);
+
+  const setActiveTab = useCallback(
+    (next: string) => {
+      const target = next === "All" ? "/" : `/?category=${encodeURIComponent(next)}`;
+      // replace, not push — avoids cluttering the back button with
+      // every filter toggle. `scroll: false` keeps the user's spot.
+      router.replace(target, { scroll: false });
+    },
+    [router],
+  );
+
+  // Whenever the active filter changes via URL, scroll the feed back
+  // up so the user lands on the top of the filtered section instead
+  // of mid-page from where they clicked.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (categoryParam) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [categoryParam]);
+
+  const { hot, closing, byCategory, rest, hasAnyInCategory } = useMemo(() => {
     const filtered =
       activeTab === "All"
         ? markets
@@ -53,15 +119,21 @@ export default function Home() {
     const closingSoon = byEnd.slice(0, 3);
     const closingIds = new Set(closingSoon.map((m) => m.id));
 
-    const remainder = [
-      ...open.filter((m) => !topIds.has(m.id) && !closingIds.has(m.id)),
-      ...resolved,
-    ];
+    // Group remaining open markets by category (excluding already-shown
+    // hot + closing). Used to render per-category sections under "All".
+    const remaining = open.filter((m) => !topIds.has(m.id) && !closingIds.has(m.id));
+    const grouped = new Map<string, Market[]>();
+    for (const m of remaining) {
+      const arr = grouped.get(m.category) ?? [];
+      arr.push(m);
+      grouped.set(m.category, arr);
+    }
 
     return {
       hot: topByVolume,
       closing: closingSoon,
-      rest: remainder,
+      byCategory: grouped,
+      rest: resolved,
       hasAnyInCategory: filtered.length > 0,
     };
   }, [markets, activeTab]);
@@ -84,23 +156,12 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Display headline + hero strip */}
-        <div className="space-y-5">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.05]">
-              Markets on anything<br className="hidden md:block" />
-              <span className="text-white/40"> that matters.</span>
-            </h1>
-            <p className="text-sm md:text-base text-muted-foreground mt-3 max-w-xl">
-              Prediction markets let the crowd price uncertainty. Buy the outcome you think is right. Get paid if you&apos;re correct.
-            </p>
-          </div>
-          <HeroStrip />
-        </div>
+        <HeroStrip />
 
-        {/* Main two-column region: feed + optional sidebar */}
-        <div className="grid xl:grid-cols-[1fr_320px] gap-8">
-          {/* ── Main column: tabs + feed ───────────────────────── */}
+        <CategoryCarousel />
+
+        {/* Main feed region — full-width, no sidebar. */}
+        <div>
           <div className="space-y-6 min-w-0">
             <h2 className="text-xl font-bold text-white">Live markets</h2>
             <CategoryChips active={activeTab} onChange={setActiveTab} />
@@ -123,30 +184,71 @@ export default function Home() {
                 }
               />
             ) : (
-              <div className="space-y-10">
-                {hot.length + closing.length + rest.length < 6 ? (
-                  <FeedSection title={null} markets={[...hot, ...closing, ...rest]} />
-                ) : (
+              <div className="space-y-12">
+                {/* Personalized + alert sections — only render under "All"
+                    so they don't appear twice when the user filters. They
+                    silently hide themselves when there's nothing to show
+                    or the user is signed out. */}
+                {activeTab === "All" && (
                   <>
-                    {hot.length > 0 && <FeedSection title="Most traded" markets={hot} />}
-                    {closing.length > 0 && <FeedSection title="Ending this week" markets={closing} />}
-                    {rest.length > 0 && (
-                      <FeedSection
-                        title={hot.length + closing.length > 0 ? "All markets" : null}
-                        markets={rest}
-                      />
-                    )}
+                    <PositionsMoving />
+                    <ForYou />
+                    <TradeTicker />
+                    <TopMovers />
+                    <ClosingToday />
+                    <CoinFlip />
+                    <EditorialPicks />
                   </>
+                )}
+
+                {hot.length > 0 && <FeedSection title="Most traded" markets={hot} />}
+                {closing.length > 0 && (
+                  <FeedSection title="Ending this week" markets={closing} />
+                )}
+
+                {/* Per-category sections — only when on "All". When the
+                    user is filtering, these would just duplicate the
+                    section title, so collapse into a single "More markets"
+                    block below. */}
+                {activeTab === "All"
+                  ? CATEGORY_ORDER.flatMap((cat) => {
+                      const ms = byCategory.get(cat);
+                      if (!ms || ms.length === 0) return [];
+                      // Inject the streak promo banner directly above the
+                      // Tech section. Tied to the section so they appear
+                      // and disappear together — avoids a stranded banner
+                      // when Tech is empty.
+                      const items: React.ReactNode[] = [];
+                      if (cat === "Tech") {
+                        items.push(<StreakBanner key="streak-banner" />);
+                      }
+                      items.push(
+                        <FeedSection
+                          key={cat}
+                          title={cat}
+                          markets={ms.slice(0, 3)}
+                          viewAllHref={`/?category=${encodeURIComponent(cat)}`}
+                        />,
+                      );
+                      return items;
+                    })
+                  : (() => {
+                      const all = Array.from(byCategory.values()).flat();
+                      return all.length > 0 ? (
+                        <FeedSection
+                          title={hot.length + closing.length > 0 ? "More markets" : null}
+                          markets={all}
+                        />
+                      ) : null;
+                    })()}
+
+                {activeTab === "All" && <CrowdVsReality />}
+
+                {rest.length > 0 && (
+                  <FeedSection title="Resolved" markets={rest} />
                 )}
               </div>
             )}
-          </div>
-
-          {/* ── Sidebar (xl+ only) ──────────────────────────────── */}
-          <div className="hidden xl:block">
-            <div className="sticky top-[80px]">
-              <HomeSidebar />
-            </div>
           </div>
         </div>
 
@@ -162,13 +264,28 @@ export default function Home() {
 function FeedSection({
   title,
   markets,
+  viewAllHref,
 }: {
   title: string | null;
   markets: Market[];
+  viewAllHref?: string;
 }) {
   return (
     <section className="space-y-4">
-      {title && <h3 className="text-base font-semibold text-white/70">{title}</h3>}
+      {title && (
+        <div className="flex items-end justify-between gap-3">
+          <h3 className="text-base font-semibold text-white/80">{title}</h3>
+          {viewAllHref && (
+            <Link
+              href={viewAllHref}
+              className="inline-flex items-center gap-0.5 text-xs font-bold text-white/50 hover:text-white transition-colors"
+            >
+              View all
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          )}
+        </div>
+      )}
       {/* Fewer columns when sidebar is present — max 3 in main column */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {markets.map((m) => (

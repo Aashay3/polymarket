@@ -8,6 +8,7 @@ import { Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
 import { BitsInput } from "@/components/ui/bits/BitsInput";
+import { NexoraWordmark } from "@/components/ui/NexoraLogo";
 import { useToast } from "@/app/context/ToastContext";
 
 function SignInForm() {
@@ -44,6 +45,9 @@ function SignInForm() {
         <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-white uppercase tracking-widest mb-6">
           <ArrowLeft className="w-3.5 h-3.5" /> Back home
         </Link>
+        <div className="flex justify-center mb-6">
+          <NexoraWordmark size={36} />
+        </div>
         <BitsCard className="p-8 md:p-10">
           <h1 className="text-2xl md:text-3xl font-black text-white mb-1">Sign in</h1>
           <p className="text-sm text-muted-foreground mb-8">Welcome back — trade on what you believe.</p>

@@ -1,9 +1,9 @@
 "use client";
 
 import { WalletProvider } from "./context/WalletContext";
-import { DrawerProvider } from "./context/DrawerContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { LeftRailProvider } from "./context/LeftRailContext";
 import { SessionProvider } from "@/components/SessionProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -13,9 +13,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <SessionProvider>
                 <ThemeProvider>
                     <ToastProvider>
-                        <DrawerProvider>
+                        <LeftRailProvider>
                             <WalletProvider>{children}</WalletProvider>
-                        </DrawerProvider>
+                        </LeftRailProvider>
                     </ToastProvider>
                 </ThemeProvider>
             </SessionProvider>

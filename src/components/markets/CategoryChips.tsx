@@ -8,6 +8,8 @@ import {
   Cpu,
   LineChart,
   FlaskConical,
+  Film,
+  Globe2,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -36,13 +38,15 @@ interface ChipSpec {
 }
 
 const CHIPS: ChipSpec[] = [
-  { id: "All",       label: "All",         icon: Grid2x2,      activeBg: "bg-primary",       iconColor: "text-primary"       },
-  { id: "Crypto",    label: "Crypto",      icon: Bitcoin,      activeBg: "bg-orange-500",    iconColor: "text-orange-400"    },
-  { id: "Politics",  label: "Politics",    icon: Landmark,     activeBg: "bg-blue-500",      iconColor: "text-blue-400"      },
-  { id: "Sports",    label: "Sports",      icon: Trophy,       activeBg: "bg-emerald-500",   iconColor: "text-emerald-400"   },
-  { id: "Tech",      label: "Tech",        icon: Cpu,          activeBg: "bg-cyan-500",      iconColor: "text-cyan-400"      },
-  { id: "Economy",   label: "Economy",     icon: LineChart,    activeBg: "bg-amber-500",     iconColor: "text-amber-400"     },
-  { id: "Science",   label: "Science",     icon: FlaskConical, activeBg: "bg-pink-500",      iconColor: "text-pink-400"      },
+  { id: "All",            label: "All",            icon: Grid2x2,      activeBg: "bg-primary",      iconColor: "text-primary"      },
+  { id: "Politics",       label: "Politics",       icon: Landmark,     activeBg: "bg-blue-500",     iconColor: "text-blue-400"     },
+  { id: "Sports",         label: "Sports",         icon: Trophy,       activeBg: "bg-emerald-500",  iconColor: "text-emerald-400"  },
+  { id: "Crypto",         label: "Crypto",         icon: Bitcoin,      activeBg: "bg-orange-500",   iconColor: "text-orange-400"   },
+  { id: "Tech",           label: "Tech",           icon: Cpu,          activeBg: "bg-cyan-500",     iconColor: "text-cyan-400"     },
+  { id: "Economy",        label: "Economy",        icon: LineChart,    activeBg: "bg-amber-500",    iconColor: "text-amber-400"    },
+  { id: "Science",        label: "Science",        icon: FlaskConical, activeBg: "bg-pink-500",     iconColor: "text-pink-400"     },
+  { id: "Entertainment",  label: "Entertainment",  icon: Film,         activeBg: "bg-fuchsia-500",  iconColor: "text-fuchsia-400"  },
+  { id: "World",          label: "World",          icon: Globe2,       activeBg: "bg-sky-500",      iconColor: "text-sky-400"      },
 ];
 
 export function CategoryChips({

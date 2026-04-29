@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { ProbabilityBar } from "./ProbabilityBar";
 import { PriceBlock } from "./PriceBlock";
 
@@ -52,11 +52,12 @@ export function MarketCard({
   const router = useRouter();
   const href = slug ?? id ?? "1";
 
-  const handleCardClick = () => {
-    router.push(`/market/${href}`);
-  };
-
+  // Trade-side buttons override the parent Link with a full preventDefault
+  // before pushing the trade-prefilled route. preventDefault stops the
+  // surrounding <Link> from navigating, stopPropagation keeps any other
+  // handlers from firing.
   const handleTradeClick = (e: React.MouseEvent, side: "YES" | "NO") => {
+    e.preventDefault();
     e.stopPropagation();
     router.push(`/market/${href}?trade=${side}`);
   };
@@ -69,10 +70,10 @@ export function MarketCard({
   const endHint = endTime ? endingHint(endTime) : null;
 
   return (
-    <BitsCard
-      hover
-      onClick={handleCardClick}
-      className="group relative p-5 flex flex-col h-full cursor-pointer border-white/5 hover:border-white/15 transition-colors"
+    <Link
+      href={`/market/${href}`}
+      aria-label={`Open ${title}`}
+      className="group relative block bg-[#121217] border border-white/5 hover:border-white/15 rounded-xl overflow-hidden p-5 flex flex-col h-full transition-colors hover:-translate-y-1 hover:duration-200 transform-gpu"
     >
       {/* Meta strip */}
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -142,7 +143,7 @@ export function MarketCard({
           />
         </div>
       )}
-    </BitsCard>
+    </Link>
   );
 }
 

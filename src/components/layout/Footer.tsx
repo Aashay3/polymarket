@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Globe, MessageSquare, Mail, Terminal, type LucideIcon } from "lucide-react";
-
-const SOCIAL_ICONS: Record<string, LucideIcon> = { Globe, MessageSquare, Mail, Terminal };
+import { Send, MessageCircle, Mail } from "lucide-react";
+import { NexoraWordmark } from "@/components/ui/NexoraLogo";
+import type { ReactNode } from "react";
 
 const FOOTER_LINKS = [
   {
@@ -44,12 +44,58 @@ const FOOTER_LINKS = [
   },
 ];
 
-const SOCIAL_LINKS = [
-  { Icon: "Globe",         href: "/support",   label: "Website" },
-  { Icon: "MessageSquare", href: "/support",   label: "Community" },
-  { Icon: "Mail",          href: "mailto:hello@nexora.io", label: "Email" },
-  { Icon: "Terminal",      href: "/support",   label: "Developers" },
-] as const;
+/**
+ * Brand glyphs for socials lucide doesn't ship (X, Instagram, GitHub).
+ * Inlined as small SVGs so they tint via `currentColor` and match the
+ * lucide icons next to them. fill-rule on Instagram avoids a rendering
+ * artifact at small sizes.
+ */
+function XGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function InstagramGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden>
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.07 1.645.07 4.849 0 3.205-.012 3.584-.07 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.645.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+    </svg>
+  );
+}
+
+function GithubGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden>
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+    </svg>
+  );
+}
+
+/**
+ * Social icon spec: each entry has the rendered glyph, href, accessible
+ * label, and a brand-colored hover tint that lights up on interaction.
+ * Tint is the platform's actual brand color so each icon feels like
+ * "the real thing" instead of a uniform white wash.
+ */
+interface Social {
+  glyph: ReactNode;
+  href: string;
+  label: string;
+  hoverTint: string; // Tailwind hover:text-* class
+}
+
+const SOCIALS: Social[] = [
+  { glyph: <XGlyph />,                              href: "https://x.com/nexora",         label: "X (Twitter)", hoverTint: "hover:text-white"          },
+  { glyph: <MessageCircle className="w-4 h-4" />,   href: "https://discord.gg/nexora",    label: "Discord",     hoverTint: "hover:text-indigo-400"     },
+  { glyph: <Send className="w-4 h-4 -translate-x-px" />, href: "https://t.me/nexora",     label: "Telegram",    hoverTint: "hover:text-sky-400"        },
+  { glyph: <InstagramGlyph />,                      href: "https://instagram.com/nexora", label: "Instagram",   hoverTint: "hover:text-pink-400"       },
+  { glyph: <GithubGlyph />,                         href: "https://github.com/nexora",    label: "GitHub",      hoverTint: "hover:text-white"          },
+  { glyph: <Mail className="w-4 h-4" />,            href: "mailto:hello@nexora.io",       label: "Email",       hoverTint: "hover:text-emerald-400"    },
+];
+
 
 export function Footer() {
   return (
@@ -57,14 +103,11 @@ export function Footer() {
       <div className="max-w-[1248px] mx-auto px-4 md:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 md:gap-8 mb-16">
           <div className="col-span-2 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold tracking-tight text-white">NEXORA</span>
+            <Link href="/" className="inline-flex items-center mb-6" aria-label="Nexora home">
+              <NexoraWordmark size={28} />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[240px]">
-              The next generation prediction market platform for decentralized forecasting and trading.
+              Prediction markets on crypto, sports, politics, and more — powered by a transparent on-chain AMM.
             </p>
           </div>
 
@@ -89,18 +132,22 @@ export function Footer() {
             <p className="text-xs text-muted-foreground">© 2026 Nexora Platform. All rights reserved.</p>
           </div>
 
-          <div className="flex items-center gap-5 order-1 md:order-2">
-            {SOCIAL_LINKS.map(({ Icon, href, label }) => {
-              const IconCmp = SOCIAL_ICONS[Icon];
+          <div className="flex items-center gap-2 order-1 md:order-2">
+            {SOCIALS.map(({ glyph, href, label, hoverTint }) => {
+              const isMail = href.startsWith("mailto:");
+              const isExternal = href.startsWith("http") || isMail;
               return (
-                <Link
+                <a
                   key={label}
                   href={href}
+                  target={isExternal && !isMail ? "_blank" : undefined}
+                  rel={isExternal ? "noreferrer noopener" : undefined}
                   aria-label={label}
-                  className="text-muted-foreground hover:text-white transition-colors transform hover:scale-110 active:scale-95"
+                  title={label}
+                  className={`w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 ring-1 ring-white/10 hover:ring-white/20 text-muted-foreground transition-all hover:-translate-y-0.5 ${hoverTint}`}
                 >
-                  <IconCmp className="w-5 h-5" />
-                </Link>
+                  {glyph}
+                </a>
               );
             })}
           </div>
@@ -110,23 +157,3 @@ export function Footer() {
   );
 }
 
-// Minimal TrendingUp fallback if lucide-react doesn't have it (it does, but just in case)
-function TrendingUp({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
-    </svg>
-  );
-}

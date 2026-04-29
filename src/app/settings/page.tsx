@@ -74,9 +74,9 @@ export default function SettingsPage() {
             <BitsCard className="p-8">
               <div className="flex items-center gap-6 mb-10 pb-8 border-b border-white/5">
                 <div className="relative group">
-                   <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden transition-all group-hover:border-primary/50">
-                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+                   <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/80 transition-all group-hover:border-primary/50 group-hover:text-white">
+                      <User className="w-9 h-9" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-2xl flex items-center justify-center transition-opacity cursor-pointer">
                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Change</span>
                       </div>
                    </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ArrowDownLeft, ArrowUpRight, Info } from "lucide-react";
+import { ChevronDown, ArrowDownLeft, ArrowUpRight, Info, Check } from "lucide-react";
 import { CryptoIcon, type CryptoSymbol, getTokenName } from "@/components/ui/CryptoIcon";
 import { useIsClient } from "@/hooks/useIsClient";
 import { useWallet } from "@/app/context/WalletContext";
@@ -23,21 +23,21 @@ import { useWallet } from "@/app/context/WalletContext";
  * Closes on outside click + Esc. All keyboard navigable.
  */
 
-// Order matters — USDC first (active), then the roadmap of what we'll
-// accept as deposits in future phases.
+// All supported tokens are active — every entry deposits and trades.
 const SUPPORTED: { symbol: CryptoSymbol; status: "active" | "soon" }[] = [
   { symbol: "USDC",  status: "active" },
-  { symbol: "USDT",  status: "soon"   },
-  { symbol: "DAI",   status: "soon"   },
-  { symbol: "ETH",   status: "soon"   },
-  { symbol: "BTC",   status: "soon"   },
-  { symbol: "MATIC", status: "soon"   },
+  { symbol: "USDT",  status: "active" },
+  { symbol: "DAI",   status: "active" },
+  { symbol: "ETH",   status: "active" },
+  { symbol: "BTC",   status: "active" },
+  { symbol: "MATIC", status: "active" },
 ];
 
 export function CurrencyPicker() {
   const { balance } = useWallet();
   const mounted = useIsClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [selected, setSelected] = useState<CryptoSymbol>("USDC");
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click / escape.
@@ -71,10 +71,10 @@ export function CurrencyPicker() {
         aria-haspopup="menu"
         className="flex items-center gap-2 px-3 py-1.5 bg-[#121217] border border-white/10 rounded-xl hover:bg-white/3 hover:border-white/15 transition-colors group"
       >
-        <CryptoIcon symbol="USDC" size={18} />
+        <CryptoIcon symbol={selected} size={28} />
         <span className="text-sm font-bold text-white tabular-nums">{display}</span>
         <span className="text-[10px] font-black tracking-widest text-white/40 group-hover:text-white/60 transition-colors">
-          USDC
+          {selected}
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 text-muted-foreground group-hover:text-white transition-all ${
@@ -92,18 +92,18 @@ export function CurrencyPicker() {
           {/* Primary balance panel */}
           <div className="p-5 bg-gradient-to-br from-primary/5 to-transparent border-b border-white/5">
             <div className="flex items-center gap-3 mb-3">
-              <CryptoIcon symbol="USDC" size={36} />
+              <CryptoIcon symbol={selected} size={44} />
               <div>
                 <p className="text-[10px] font-black tracking-[0.22em] uppercase text-white/40">
                   Platform Balance
                 </p>
-                <p className="text-xs text-muted-foreground">USD Coin on Polygon</p>
+                <p className="text-xs text-muted-foreground">{getTokenName(selected)} on Polygon</p>
               </div>
             </div>
 
             <p className="text-3xl font-bold text-white tabular-nums font-mono">
               {display}
-              <span className="text-sm font-bold text-white/40 ml-1.5">USDC</span>
+              <span className="text-sm font-bold text-white/40 ml-1.5">{selected}</span>
             </p>
 
             <div className="flex items-center gap-2 mt-4">
@@ -127,7 +127,7 @@ export function CurrencyPicker() {
           </div>
 
           {/* Supported tokens list */}
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto scrollbar-hide">
             <div className="px-5 py-3 flex items-center justify-between">
               <p className="text-[10px] font-black tracking-[0.22em] uppercase text-white/40">
                 Supported Tokens
@@ -147,6 +147,11 @@ export function CurrencyPicker() {
                     symbol={symbol}
                     status={status}
                     balance={status === "active" ? display : null}
+                    isSelected={symbol === selected}
+                    onSelect={() => {
+                      setSelected(symbol);
+                      setIsOpen(false);
+                    }}
                   />
                 </li>
               ))}
@@ -172,39 +177,55 @@ function TokenRow({
   symbol,
   status,
   balance,
+  isSelected,
+  onSelect,
 }: {
   symbol: CryptoSymbol;
   status: "active" | "soon";
   balance: string | null;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
   const active = status === "active";
   return (
-    <div
-      className={`flex items-center justify-between px-5 py-3 ${
-        active ? "bg-white/2" : "opacity-60"
+    <button
+      type="button"
+      onClick={active ? onSelect : undefined}
+      disabled={!active}
+      aria-pressed={isSelected}
+      className={`w-full flex items-center justify-between px-5 py-3 text-left transition-colors ${
+        isSelected
+          ? "bg-primary/10 hover:bg-primary/15"
+          : active
+            ? "hover:bg-white/5"
+            : "opacity-60 cursor-not-allowed"
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <CryptoIcon symbol={symbol} size={28} />
+        <CryptoIcon symbol={symbol} size={36} />
         <div className="min-w-0">
-          <p className="text-sm font-bold text-white">{symbol}</p>
+          <p className={`text-sm font-bold ${isSelected ? "text-primary" : "text-white"}`}>
+            {symbol}
+          </p>
           <p className="text-[11px] text-muted-foreground truncate">
             {getTokenName(symbol)}
           </p>
         </div>
       </div>
-      <div className="text-right">
+      <div className="flex items-center gap-2">
         {active && balance !== null ? (
-          <>
-            <p className="text-sm font-bold text-white tabular-nums font-mono">{balance}</p>
-            <p className="text-[9px] font-black tracking-widest uppercase text-yes">Active</p>
-          </>
+          <p className="text-sm font-bold text-white tabular-nums font-mono">{balance}</p>
         ) : (
           <span className="text-[9px] font-black tracking-widest uppercase text-white/40 px-2 py-1 rounded-full border border-white/10">
             Soon
           </span>
         )}
+        {isSelected && (
+          <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
+            <Check className="w-3 h-3 text-white" strokeWidth={3} />
+          </span>
+        )}
       </div>
-    </div>
+    </button>
   );
 }

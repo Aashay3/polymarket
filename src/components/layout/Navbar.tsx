@@ -9,16 +9,16 @@ import {
   Search,
   Bell,
   LogIn,
-  LineChart,
+  Home,
   Activity as ActivityIcon,
   Trophy,
 } from "lucide-react";
-import { NexoraWordmark, NexoraIcon } from "@/components/ui/NexoraLogo";
-import { useDrawer } from "@/app/context/DrawerContext";
+import { NexoraWordmark } from "@/components/ui/NexoraLogo";
 import { useWallet } from "@/app/context/WalletContext";
+import { useLeftRail } from "@/app/context/LeftRailContext";
 import { useIsClient } from "@/hooks/useIsClient";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useNotifications } from "@/hooks/useNotifications";
-import { AccountDrawer } from "./AccountDrawer";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { CurrencyPicker } from "./CurrencyPicker";
 import { CryptoIcon } from "@/components/ui/CryptoIcon";
@@ -28,7 +28,7 @@ import { SearchModal } from "../SearchModal";
 /**
  * Navbar layout:
  *
- *   [LOGO] [📈 Markets] [📊 Activity] [🏆 Leaderboard] | [search] | [USDC ▾] [Wallet] [🔔] [avatar / Sign in] [☰]
+ *   [LOGO] [📈 Markets] [📊 Activity] [🏆 Leaderboard] | [search] | [USDC ▾] [Wallet] [🔔] [Sign in?] [☰]
  *
  * - Nav links carry icons, follow an active-route highlight via pathname.
  * - Search bar sits center, narrow, opens modal on click / "/" / Cmd-K.
@@ -39,7 +39,7 @@ import { SearchModal } from "../SearchModal";
  */
 
 const NAV_LINKS = [
-  { name: "Markets",     href: "/",                     icon: LineChart },
+  { name: "Markets",     href: "/",                     icon: Home },
   { name: "Activity",    href: "/dashboard/activity",   icon: ActivityIcon },
   { name: "Leaderboard", href: "/leaderboard",          icon: Trophy },
 ];
@@ -47,15 +47,16 @@ const NAV_LINKS = [
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { toggleDrawer } = useDrawer();
   const { balance, isConnected, isLoading } = useWallet();
   const { data: session, status } = useSession();
   const isAuthed = status === "authenticated" && !!session?.user;
-  const avatarSeed =
-    session?.user?.username ?? session?.user?.email ?? session?.user?.id ?? "guest";
   const mounted = useIsClient();
+  const { railPx, openMobile } = useLeftRail();
+  // Rail only exists on xl+ screens. Below that, Navbar spans full width
+  // and the hamburger opens the mobile drawer instead of shifting the bar.
+  const isXl = useMediaQuery("(min-width: 1280px)");
+  const leftOffset = mounted && isXl ? railPx : 0;
   const [scrolled, setScrolled] = useState(false);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const { unreadCount } = useNotifications();
@@ -93,40 +94,59 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 h-[60px] transition-all duration-300 border-b flex items-center px-4 md:px-6 gap-3 md:gap-5
+      // `left` matches the left-rail width on xl+ so the nav starts at
+      // the rail's right edge rather than overlapping it. Below xl the
+      // rail is hidden and left falls back to 0.
+      style={{ left: leftOffset }}
+      className={`fixed top-0 right-0 z-50 h-[64px] transition-[left,background] duration-200 flex items-center px-4 md:px-6 gap-3 md:gap-5
         ${scrolled
-          ? "bg-background/90 backdrop-blur-md border-white/10 shadow-lg"
-          : "bg-background border-white/6"
+          ? "bg-background/90 backdrop-blur-md shadow-lg"
+          : "bg-background"
         }`}
     >
       {/* ── Left: logo + inline nav ──────────────────────────── */}
-      <div className="flex items-center gap-2 md:gap-3 flex-none min-w-0">
-        <Link href="/" className="flex items-center gap-2 shrink-0 pr-2">
-          <div className="md:hidden">
-            <NexoraIcon size={24} />
-          </div>
-          <div className="hidden md:block">
-            <NexoraWordmark className="scale-90 origin-left" />
-          </div>
+      <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0 justify-start">
+        <Link href="/" className="flex items-center shrink-0 pr-2">
+          <NexoraWordmark size={28} />
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-1">
-          {NAV_LINKS.map((link) => {
+        {/* Circular icon-button navigation inside a pill container.
+            Active route = filled violet circle. Inactive = subtle icon
+            with a divider between slots. Tooltip shows the label. */}
+        <nav
+          className="hidden lg:inline-flex items-center gap-1 bg-[#121217] border border-white/10 rounded-full p-1"
+          aria-label="Primary"
+        >
+          {NAV_LINKS.map((link, idx) => {
             const active = isActive(link.href);
             const Icon = link.icon;
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                  active
-                    ? "text-white bg-white/8"
-                    : "text-muted-foreground hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {link.name}
-              </Link>
+              <div key={link.href} className="flex items-center">
+                <Link
+                  href={link.href}
+                  title={link.name}
+                  aria-label={link.name}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative flex items-center justify-center w-9 h-9 rounded-full transition-all ${
+                    active
+                      ? "bg-primary text-white shadow-[0_4px_14px_-2px_rgba(139,92,246,0.5)]"
+                      : "text-muted-foreground hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Icon className="w-[18px] h-[18px]" />
+                </Link>
+                {/* Divider between inactive pills — hidden next to the active one */}
+                {idx < NAV_LINKS.length - 1 && (
+                  <span
+                    className={`w-px h-4 mx-0.5 bg-white/10 transition-opacity ${
+                      active || isActive(NAV_LINKS[idx + 1].href)
+                        ? "opacity-0"
+                        : "opacity-100"
+                    }`}
+                    aria-hidden
+                  />
+                )}
+              </div>
             );
           })}
         </nav>
@@ -143,70 +163,55 @@ export function Navbar() {
         )}
       </div>
 
-      {/* ── Center: compact search bar (narrower than before) ─ */}
-      <div className="flex-1 flex justify-center min-w-0 hidden md:flex">
-        <button
-          type="button"
-          onClick={() => setIsSearchOpen(true)}
-          className="group w-full max-w-[280px] flex items-center gap-2 h-9 px-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/8 hover:border-white/15 transition-colors text-left"
-          aria-label="Search markets"
-        >
-          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-          <span className="text-sm text-muted-foreground group-hover:text-white/70 transition-colors flex-1 truncate">
-            Search markets…
-          </span>
-          <kbd className="hidden lg:inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] font-mono font-bold text-white/40">
-            /
-          </kbd>
-        </button>
-      </div>
-
-      {/* ── Right cluster ────────────────────────────────────── */}
-      <div className="flex items-center gap-2 ml-auto flex-none">
-        {/* Mobile-only search icon (the input above is hidden < md) */}
-        <button
-          type="button"
-          onClick={() => setIsSearchOpen(true)}
-          className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
-          aria-label="Search markets"
-        >
-          <Search className="w-5 h-5" />
-        </button>
-
-        {status === "loading" ? (
-          <div className="w-24 h-9 rounded-xl bg-white/5 animate-pulse" aria-hidden />
-        ) : (
+      {/* ── Center: wallet cluster (USDC balance + Wallet CTA) ──
+          Stake-style: balance pill + primary Wallet button grouped in
+          the middle. Hidden when signed out (no balance to show). */}
+      <div className="flex items-center gap-2 flex-none">
+        {isAuthed && (
           <>
-            {/* USDC picker — only when authed (no fake balance for visitors) */}
-            {isAuthed && (
-              <div className="hidden sm:block">
-                <CurrencyPicker />
-              </div>
-            )}
+            {/* USDC picker — full pill on sm+, compact chip on mobile */}
+            <div className="hidden sm:block">
+              <CurrencyPicker />
+            </div>
+            <button
+              onClick={() => router.push("/wallet")}
+              aria-label="Open wallet"
+              className="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#121217] border border-white/10 hover:bg-white/5 transition-colors"
+            >
+              <CryptoIcon symbol="USDC" size={22} />
+              <span className="text-xs font-bold text-white tabular-nums">
+                {mounted ? balance.toFixed(0) : "0"}
+              </span>
+            </button>
 
-            {/* Mobile compact USDC chip for authed users */}
-            {isAuthed && (
-              <button
-                onClick={() => router.push("/wallet")}
-                aria-label="Open wallet"
-                className="sm:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#121217] border border-white/10 hover:bg-white/5 transition-colors"
-              >
-                <CryptoIcon symbol="USDC" size={16} />
-                <span className="text-xs font-bold text-white tabular-nums">
-                  {mounted ? balance.toFixed(0) : "0"}
-                </span>
-              </button>
-            )}
-
-            {/* Wallet button — visible in every state. Signed-out click routes
-                to /auth/signin so visitors see the control before they opt in. */}
             <BitsButton
               onClick={goWallet}
               className="hidden sm:inline-flex h-9 px-4 rounded-xl border-none bg-primary hover:bg-primary/90"
             >
               Wallet
             </BitsButton>
+          </>
+        )}
+      </div>
 
+      {/* ── Right cluster: icons only ────────────────────────── */}
+      <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+        {/* Search — circular icon button at every breakpoint. Click,
+            press "/", or Cmd/Ctrl+K to open the search modal. */}
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(true)}
+          className="w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+          aria-label="Search markets"
+          title="Search markets (/)"
+        >
+          <Search className="w-[18px] h-[18px]" />
+        </button>
+
+        {status === "loading" ? (
+          <div className="w-10 h-10 rounded-full bg-white/5 animate-pulse" aria-hidden />
+        ) : (
+          <>
             {/* Notifications — always visible. Signed-out opens signin. */}
             <div className="relative">
               <button
@@ -217,7 +222,7 @@ export function Navbar() {
                     ? `Notifications (${unreadCount} unread)`
                     : "Notifications"
                 }
-                className="relative w-9 h-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+                className="relative w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
               >
                 <Bell className="w-[18px] h-[18px]" />
                 {isAuthed && unreadCount > 0 && (
@@ -234,42 +239,26 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Avatar (authed) or Sign-in button (guest) */}
-            {isAuthed ? (
-              <>
-                <button
-                  onClick={() => setIsAccountOpen(!isAccountOpen)}
-                  aria-label="Open account menu"
-                  className="w-9 h-9 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white cursor-pointer overflow-hidden hover:border-primary/50 transition-colors"
-                >
-                  <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarSeed)}`}
-                    alt=""
-                  />
-                </button>
-                <div className="relative">
-                  <AccountDrawer
-                    isOpen={isAccountOpen}
-                    onClose={() => setIsAccountOpen(false)}
-                  />
-                </div>
-              </>
-            ) : (
+            {/* Sign-in button (guest only). Authed users access account
+                via the LeftRail / hamburger drawer. */}
+            {!isAuthed && (
               <Link
                 href="/auth/signin"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-colors shadow-sm"
+                aria-label="Sign in"
+                title="Sign in"
+                className="w-10 h-10 inline-flex items-center justify-center rounded-full bg-primary hover:bg-primary/90 text-white transition-colors shadow-[0_4px_14px_-2px_rgba(139,92,246,0.5)]"
               >
-                <LogIn className="w-4 h-4" />
-                <span>Sign in</span>
+                <LogIn className="w-[18px] h-[18px]" />
               </Link>
             )}
           </>
         )}
 
-        {/* Hamburger — far right (Polymarket convention). Opens the nav drawer. */}
+        {/* Hamburger — opens the LeftRail as a mobile drawer below xl.
+            Hidden on xl+ where the rail is always on-screen. */}
         <button
-          onClick={toggleDrawer}
-          className="p-2 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+          onClick={openMobile}
+          className="xl:hidden w-9 h-9 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5" />

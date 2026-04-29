@@ -15,6 +15,7 @@ export interface Market {
     slug: string;
     question: string;
     description: string;
+    rules: string;
     category: string;
     imageUrl: string | null;
     yesShares: number;
@@ -50,6 +51,7 @@ interface MarketDTO {
     slug: string;
     question: string;
     description: string;
+    rules: string;
     category: string;
     imageUrl: string | null;
     yesShares: string;
@@ -85,6 +87,7 @@ function marketFromDTO(d: MarketDTO, questionById?: Map<string, string>): Market
         slug: d.slug,
         question: d.question,
         description: d.description,
+        rules: d.rules ?? "",
         category: d.category,
         imageUrl: d.imageUrl,
         yesShares: parseFloat(d.yesShares),

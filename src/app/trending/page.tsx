@@ -1,159 +1,176 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Flame, TrendingUp, Clock, Search, SearchX } from "lucide-react";
-import { BitsCard } from "@/components/ui/bits/BitsCard";
-import { BitsButton } from "@/components/ui/bits/BitsButton";
-import { BitsTabs } from "@/components/ui/bits/BitsTabs";
-import { Sparkline } from "@/components/ui/Sparkline";
+import { useMemo, useState } from "react";
+import { Flame, Search, SearchX, ArrowUpDown } from "lucide-react";
+import { CategoryChips } from "@/components/markets/CategoryChips";
+import { MarketCard } from "@/components/markets/MarketCard";
+import { MarketCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useWallet, type Market } from "@/app/context/WalletContext";
 
-const CATEGORIES = ["All", "Crypto", "Sports", "Politics", "Tech", "Economy"];
+/**
+ * Trending markets — full filterable / sortable list. Pulls live data
+ * from the wallet context (same SSE-fed source as the home feed) so
+ * prices and volumes update in real time. Rendered with the global
+ * MarketCard for consistency with the home grid.
+ */
 
-const MARKETS = [
-  { id: "t1", question: "Will Bitcoin exceed $100k before Dec 2025?", category: "Crypto",   yesProb: 42, volume: "$4.5M", tag: "trending", yesShares: 42, noShares: 58 },
-  { id: "t2", question: "Will the Federal Reserve cut rates in Q3?",   category: "Economy",  yesProb: 71, volume: "$5.4M", tag: "ending",   yesShares: 71, noShares: 29 },
-  { id: "t3", question: "Will OpenAI release GPT-5 this year?",        category: "Tech",     yesProb: 80, volume: "$6.1M", tag: "trending", yesShares: 80, noShares: 20 },
-  { id: "t4", question: "Will SpaceX land on Mars by 2027?",           category: "Tech",     yesProb: 11, volume: "$890K", tag: "ending",   yesShares: 11, noShares: 89 },
-  { id: "t5", question: "Who will win the 2026 NBA Championship?",     category: "Sports",   yesProb: 40, volume: "$3.2M", tag: "trending", yesShares: 40, noShares: 60 },
-  { id: "t6", question: "Will Ethereum flip Bitcoin market cap?",       category: "Crypto",   yesProb: 25, volume: "$2.1M", tag: "trending", yesShares: 25, noShares: 75 },
-  { id: "t7", question: "US GDP growth > 2.5% in 2026?",              category: "Economy",  yesProb: 55, volume: "$1.8M", tag: "ending",   yesShares: 55, noShares: 45 },
-  { id: "t8", question: "Will Apple release an AR headset in 2025?",   category: "Tech",     yesProb: 50, volume: "$7.1M", tag: "trending", yesShares: 50, noShares: 50 },
-  { id: "t9", question: "2026 Midterms: Democrats win the House?",     category: "Politics", yesProb: 48, volume: "$12.4M",tag: "trending", yesShares: 48, noShares: 52 },
+type SortKey = "volume" | "movers" | "ending" | "newest";
+
+const SORTS: { id: SortKey; label: string }[] = [
+  { id: "volume", label: "Most traded" },
+  { id: "movers", label: "Biggest movers" },
+  { id: "ending", label: "Ending soonest" },
+  { id: "newest", label: "Newest" },
 ];
 
-// Deterministic pseudo-random sparkline so renders are pure and stable.
-function sparkForId(id: string): number[] {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return Array.from({ length: 20 }, () => {
-    h ^= h << 13;
-    h ^= h >>> 17;
-    h ^= h << 5;
-    return 20 + (Math.abs(h) % 1000) / 1000 * 60;
-  });
-}
-
-function MarketCard({ market, onTrade }: { market: typeof MARKETS[0]; onTrade: (id: string, type: "YES" | "NO") => void }) {
-  const spark = useMemo(() => sparkForId(market.id), [market.id]);
-  const noProb = 100 - market.yesProb;
-
-  return (
-    <BitsCard hover className="p-5 flex flex-col h-full group" onClick={() => onTrade(market.id, "YES")}>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <span className="text-[11px] font-bold text-muted-foreground tracking-[0.08em] uppercase block mb-1">{market.category}</span>
-          {market.tag === "trending"
-            ? <span className="flex items-center gap-1 text-[10px] font-bold text-primary"><Flame className="w-3 h-3" />Hot Now</span>
-            : <span className="flex items-center gap-1 text-[10px] font-bold text-blue-400"><Clock className="w-3 h-3" />Ending Soon</span>
-          }
-        </div>
-        <div className="w-16 h-8 opacity-50 group-hover:opacity-100 transition-opacity">
-          <Sparkline data={spark} color={market.yesProb > 50 ? "#22C55E" : "#EF4444"} strokeWidth={2} />
-        </div>
-      </div>
-
-      {/* Question */}
-      <p className="text-15px md:text-16px font-semibold text-white leading-snug mb-6 flex-1">{market.question}</p>
-
-      {/* Probability */}
-      <div className="mb-6">
-        <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-2.5">
-          <div className="h-full bg-yes" style={{ width: `${market.yesProb}%` }} />
-        </div>
-        <div className="flex justify-between items-center text-[10px] font-bold tracking-wider">
-          <span className="text-yes uppercase">YES {market.yesProb}%</span>
-          <span className="flex items-center gap-1 text-white/20"><TrendingUp className="w-3 h-3" />{market.volume} Volume</span>
-          <span className="text-no uppercase">{noProb}% NO</span>
-        </div>
-      </div>
-
-      {/* Buttons */}
-      <div className="flex gap-2 border-t border-white/5 pt-4">
-        <BitsButton
-          variant="yes"
-          onClick={(e) => { e.stopPropagation(); onTrade(market.id, "YES"); }}
-          className="flex-1 h-9 rounded-xl flex items-center justify-between px-4"
-        >
-          <span>Yes</span> <span>{market.yesProb}¢</span>
-        </BitsButton>
-        <BitsButton
-          variant="no"
-          onClick={(e) => { e.stopPropagation(); onTrade(market.id, "NO"); }}
-          className="flex-1 h-9 rounded-xl flex items-center justify-between px-4"
-        >
-          <span>No</span> <span>{noProb}¢</span>
-        </BitsButton>
-      </div>
-    </BitsCard>
-  );
-}
-
 export default function TrendingPage() {
-  const router = useRouter();
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [search, setSearch] = useState("");
+  const { markets, isLoading } = useWallet();
+  const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [sort, setSort] = useState<SortKey>("volume");
+  const [search, setSearch] = useState<string>("");
 
-  const filtered = useMemo(() => MARKETS.filter(m =>
-    (activeCategory === "All" || m.category === activeCategory) &&
-    (!search || m.question.toLowerCase().includes(search.toLowerCase()))
-  ), [activeCategory, search]);
+  const filtered = useMemo<Market[]>(() => {
+    const q = search.trim().toLowerCase();
+    const open = markets.filter((m) => m.status === "OPEN");
+    const byCategory =
+      activeCategory === "All"
+        ? open
+        : open.filter(
+            (m) => m.category?.toLowerCase() === activeCategory.toLowerCase(),
+          );
+    const bySearch = q
+      ? byCategory.filter((m) => m.question.toLowerCase().includes(q))
+      : byCategory;
 
-  const openMarket = (id: string, type?: "YES" | "NO") => {
-    router.push(type ? `/market/${id}?trade=${type}` : `/market/${id}`);
-  };
+    const arr = [...bySearch];
+    switch (sort) {
+      case "volume":
+        arr.sort((a, b) => b.volumeAmount - a.volumeAmount);
+        break;
+      case "movers":
+        arr.sort(
+          (a, b) =>
+            Math.abs(b.yesChangeBps ?? 0) - Math.abs(a.yesChangeBps ?? 0),
+        );
+        break;
+      case "ending":
+        arr.sort(
+          (a, b) =>
+            new Date(a.endTime).getTime() - new Date(b.endTime).getTime(),
+        );
+        break;
+      case "newest":
+        // No createdAt on Market — fall back to id order, which is roughly
+        // creation order for cuid-style ids (lexical ≈ chronological).
+        arr.sort((a, b) => (b.id < a.id ? -1 : 1));
+        break;
+    }
+    return arr;
+  }, [markets, activeCategory, sort, search]);
+
+  const showingSkeleton = isLoading && markets.length === 0;
+  const totalOpen = markets.filter((m) => m.status === "OPEN").length;
 
   return (
     <div className="space-y-8 pb-20">
-
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
-            <Flame className="w-6 h-6 text-primary" /> Trending Markets
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1.5 font-medium">{MARKETS.length} active opportunities</p>
-        </div>
-        
-        <BitsTabs 
-          tabs={CATEGORIES.map(c => ({ id: c, label: c }))} 
-          activeTab={activeCategory} 
-          onChange={setActiveCategory} 
-        />
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+          <Flame className="w-6 h-6 text-primary" /> Trending markets
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1.5 font-medium">
+          {totalOpen} active {totalOpen === 1 ? "market" : "markets"} ·
+          updated live
+        </p>
       </div>
 
-      {/* Search area */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      {/* Search + sort row */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
-            value={search} onChange={e => setSearch(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search prediction markets…"
             className="w-full bg-[#121217] border border-white/5 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder:text-muted-foreground outline-none focus:border-primary/30 transition-colors"
           />
         </div>
+
+        {/* Sort selector — native select keeps it accessible and small. */}
+        <div className="relative shrink-0">
+          <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="appearance-none pl-9 pr-9 py-3 rounded-xl bg-[#121217] border border-white/5 hover:border-white/10 text-sm font-semibold text-white outline-none focus:border-primary/30 transition-colors cursor-pointer min-w-[180px]"
+            aria-label="Sort markets"
+          >
+            {SORTS.map((s) => (
+              <option key={s.id} value={s.id} className="bg-[#121217]">
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
+      {/* Category chips */}
+      <CategoryChips active={activeCategory} onChange={setActiveCategory} />
+
       {/* Grid */}
-      {filtered.length === 0 ? (
+      {showingSkeleton ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <MarketCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={SearchX}
           title="No markets match your filters"
           description="Try a different category or clear your search."
-          action={search ? { label: "Clear search", onClick: () => setSearch("") } : { label: "Reset filters", onClick: () => setActiveCategory("All") }}
+          action={
+            search
+              ? { label: "Clear search", onClick: () => setSearch("") }
+              : activeCategory !== "All"
+              ? { label: "Reset filters", onClick: () => setActiveCategory("All") }
+              : undefined
+          }
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map(m => (
-            <MarketCard key={m.id} market={m} onTrade={openMarket} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((m) => (
+            <MarketCard
+              key={m.id}
+              id={m.id}
+              slug={m.slug}
+              title={m.question}
+              category={m.category}
+              volume={
+                m.volumeAmount > 0
+                  ? `$${formatCompact(m.volumeAmount)} vol`
+                  : undefined
+              }
+              yesPrice={m.yesPrice}
+              noPrice={m.noPrice}
+              yesChangeBps={m.yesChangeBps}
+              noChangeBps={m.noChangeBps}
+              status={m.status}
+              winningOutcome={m.winningOutcome}
+              endTime={m.endTime}
+              image={m.imageUrl ?? undefined}
+            />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+  return n.toFixed(0);
 }
