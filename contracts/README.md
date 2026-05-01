@@ -1,0 +1,106 @@
+# NEXORA contracts
+
+Foundry project for the on-chain prediction-market settlement layer.
+
+> **Demo only.** This contract has not been audited. Do not deploy
+> with real funds. Tier-2 from `NEXORA-Status.pdf` — covers the core
+> AMM + resolve + claim loop; production hardening (UMA oracle,
+> upgradability, MEV protection) is out of scope here.
+
+## Architecture
+
+A single `PredictionMarket` contract holds every binary market.
+Outcome-share balances are tracked internally per-(marketId, user)
+rather than as separate ERC-20s — flat deploy cost, simpler claim flow.
+
+* **AMM** — constant-product invariant `yesPool * noPool = k`. Buying
+  YES with `X` USDC routes through `noPool += X', yesPool -= sharesOut`
+  where `sharesOut = yesPool * X' / (noPool + X')` and `X' = X * (1 - feeBps/10_000)`.
+  Sell is the symmetric inverse.
+* **Resolution** — `onlyOwner` for now. Replace with a multisig or
+  UMA-style optimistic oracle when graduating from demo.
+* **Claim** — winning shares burn 1:1 for USDC. Reserve always covers
+  outstanding winning shares (proof: each share is backed by a
+  matching USDC contribution net of fees, fees stay in the pool).
+* **LP withdraw** — owner pulls the spread + losing-side stakes after
+  resolution. Cannot pull more than `usdcReserve - outstandingWinners`.
+
+## Layout
+
+```
+contracts/
+├── foundry.toml          # toolchain config + RPC endpoints
+├── src/
+│   ├── PredictionMarket.sol
+│   └── MockUSDC.sol      # 6-decimal mintable test token
+├── test/
+│   └── PredictionMarket.t.sol
+└── script/
+    └── Deploy.s.sol
+```
+
+## Setup
+
+You'll need [Foundry](https://book.getfoundry.sh/getting-started/installation)
+installed (`foundryup` after the `curl` installer).
+
+```bash
+cd contracts
+
+# Fetch deps (OpenZeppelin v5, forge-std)
+forge install openzeppelin/openzeppelin-contracts --no-commit
+forge install foundry-rs/forge-std --no-commit
+
+# Compile + test
+forge build
+forge test -vv
+```
+
+## Deploy to Polygon Amoy
+
+1. Get a wallet with Amoy MATIC ([faucet](https://faucet.polygon.technology/)).
+2. Get test USDC on Amoy ([Circle faucet](https://faucet.circle.com/),
+   chain = "Polygon PoS Amoy").
+3. Set env:
+   ```bash
+   export DEPLOYER_PRIVATE_KEY=0x<your-key>
+   export POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
+   export POLYGONSCAN_API_KEY=<for verification>
+   export USDC_ADDRESS=0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582
+   ```
+4. Run:
+   ```bash
+   forge script script/Deploy.s.sol \
+     --rpc-url amoy \
+     --broadcast \
+     --verify
+   ```
+5. Copy the printed `PredictionMarket` address into the Next.js side
+   as `NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS` (read by
+   `src/lib/contracts/predictionMarket.ts`).
+
+## Wiring to the Next.js app
+
+The frontend uses [viem](https://viem.sh) with a single shared client
+defined in `src/lib/chain.ts`. Contract calls live in
+`src/lib/contracts/predictionMarket.ts`; the ABI is exported from
+`src/lib/contracts/abi.ts` and is hand-maintained — re-paste from
+`out/PredictionMarket.sol/PredictionMarket.json` after each
+ABI-affecting change.
+
+Wiring the API routes (`/api/trades`, `/api/positions/close`,
+`/api/admin/markets/[id]/resolve`) to call this contract is a separate
+task — see "Tier 2 day 4" in the status PDF.
+
+## Known gaps vs production
+
+* **No oracle** — owner key resolves outcomes. Compromised key =
+  arbitrary resolution.
+* **No upgradability** — bugs require a fresh deploy + market migration.
+* **No pause** — emergency stop relies on the off-chain layer refusing
+  to surface markets.
+* **No batch claim** — gas-expensive for users with many winning markets.
+* **No share transfers** — peer-to-peer trading is intentionally
+  excluded; users only trade against the AMM.
+* **`question` stored on-chain** — for production, store a content
+  hash and keep the long-form text in IPFS or the API.
