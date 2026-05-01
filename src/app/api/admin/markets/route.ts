@@ -15,6 +15,7 @@ import { requireAdmin } from "@/lib/auth-helpers";
 import { CreateMarketSchema } from "@/lib/schemas";
 import { toMarketDTO } from "@/lib/serialize";
 import { publish } from "@/lib/events";
+import { createMarketOnChain, mirrorOnChain } from "@/lib/contracts/admin-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,18 +66,42 @@ export const POST = handler(async (req) => {
     },
   });
 
+  // Best-effort on-chain mirror. Returns null when ENABLE_ON_CHAIN_SETTLEMENT
+  // is off OR the chain call fails — DB stays the source of truth either way.
+  const chainTx = await mirrorOnChain("createMarket", () =>
+    createMarketOnChain({
+      marketUuid: market.id,
+      question: market.question,
+      endTime: market.endTime,
+      initialLiquidityUsdc: input.initialLiquidity,
+      feeBps: input.feeBps,
+    }),
+  );
+
   await prisma.auditLog.create({
     data: {
       actorId: admin.id,
       action: "market.create",
       targetType: "Market",
       targetId: market.id,
-      metadata: { question: market.question, initialLiquidity: input.initialLiquidity } as Prisma.InputJsonValue,
+      metadata: {
+        question: market.question,
+        initialLiquidity: input.initialLiquidity,
+        ...(chainTx
+          ? { chainTxHash: chainTx.txHash, chainBlock: chainTx.blockNumber.toString() }
+          : {}),
+      } as Prisma.InputJsonValue,
     },
   });
 
   const dto = toMarketDTO(market);
   publish({ type: "market.created", market: dto });
 
-  return ok({ market: dto }, { status: 201 });
+  return ok(
+    {
+      market: dto,
+      chainTxHash: chainTx?.txHash ?? null,
+    },
+    { status: 201 },
+  );
 });

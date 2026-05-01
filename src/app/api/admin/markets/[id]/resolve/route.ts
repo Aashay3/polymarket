@@ -21,6 +21,7 @@ import { z } from "zod";
 import { OutcomeSchema } from "@/lib/schemas";
 import { toMarketDTO } from "@/lib/serialize";
 import { publish } from "@/lib/events";
+import { resolveMarketOnChain, mirrorOnChain } from "@/lib/contracts/admin-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +142,13 @@ export const POST = handler(async (req, ctx: { params: Promise<{ id: string }> }
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 },
   );
 
+  // Best-effort on-chain mirror of the resolution. Off-chain is the
+  // source of truth for payouts (already disbursed in the DB tx); the
+  // chain call just records the outcome on-chain for provenance.
+  const chainTx = await mirrorOnChain("resolve", () =>
+    resolveMarketOnChain({ marketUuid: result.market.id, outcome: input.outcome }),
+  );
+
   const marketDTO = toMarketDTO(result.market);
   publish({ type: "market.resolved", market: marketDTO });
   publish({ type: "market.updated", market: marketDTO });
@@ -166,5 +174,6 @@ export const POST = handler(async (req, ctx: { params: Promise<{ id: string }> }
     market: marketDTO,
     winnersCount: result.winnersCount,
     totalPaid: result.totalPaid.toFixed(6),
+    chainTxHash: chainTx?.txHash ?? null,
   });
 });

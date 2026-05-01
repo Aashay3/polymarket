@@ -82,15 +82,46 @@ forge test -vv
 ## Wiring to the Next.js app
 
 The frontend uses [viem](https://viem.sh) with a single shared client
-defined in `src/lib/chain.ts`. Contract calls live in
+defined in `src/lib/chain.ts`. Read-side helpers live in
 `src/lib/contracts/predictionMarket.ts`; the ABI is exported from
 `src/lib/contracts/abi.ts` and is hand-maintained — re-paste from
 `out/PredictionMarket.sol/PredictionMarket.json` after each
 ABI-affecting change.
 
-Wiring the API routes (`/api/trades`, `/api/positions/close`,
-`/api/admin/markets/[id]/resolve`) to call this contract is a separate
-task — see "Tier 2 day 4" in the status PDF.
+### Hybrid mode (admin actions on-chain)
+
+Set in `.env.local`:
+
+```bash
+ENABLE_ON_CHAIN_SETTLEMENT=true
+NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=0x<deployed-address>
+ADMIN_PRIVATE_KEY=0x<hot-key-with-USDC-and-MATIC-on-Amoy>
+```
+
+When set, **admin** actions are mirrored on-chain after the DB
+mutation commits:
+
+| API route                                     | On-chain call         |
+| --------------------------------------------- | --------------------- |
+| `POST /api/admin/markets`                     | `createMarket(...)`   |
+| `POST /api/admin/markets/[id]/resolve`        | `resolve(id, outcome)`|
+
+Failure modes are deliberately gentle: the chain call uses
+`mirrorOnChain()` which returns `null` on revert/timeout — the API
+still returns `200`, the DB write stands, and the failure is logged
+to console + the AuditLog metadata. Re-run the action manually if
+needed.
+
+USDC approval is granted lazily on first `createMarket` (max-uint256
+to save gas on subsequent calls).
+
+### What's NOT wired
+
+User-facing actions (`buy`, `sell`, `claim`) need wallet-connect on the
+client so users sign their own transactions — held back to keep this
+chunk reviewable. Today user trades only hit the DB. Day 5 of the
+Tier-2 plan adds the client-side signer; until then the chain has the
+markets + resolutions but not the per-user share balances.
 
 ## Known gaps vs production
 
