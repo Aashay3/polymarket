@@ -144,13 +144,20 @@ export function NotificationsDropdown({ isOpen, onClose }: Props) {
         )}
       </div>
 
-      <div className="border-t border-white/5 p-2">
+      <div className="border-t border-white/5 p-2 flex items-center justify-between gap-2">
+        <Link
+          href="/notifications"
+          onClick={onClose}
+          className="flex-1 text-center py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white bg-primary/15 hover:bg-primary/25 transition-colors"
+        >
+          See all
+        </Link>
         <Link
           href="/settings/notifications"
           onClick={onClose}
-          className="block text-center py-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white transition-colors"
+          className="flex-1 text-center py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
         >
-          Notification settings
+          Settings
         </Link>
       </div>
     </div>
