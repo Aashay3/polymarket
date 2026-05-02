@@ -68,8 +68,8 @@ function displayName(r: { username: string | null; name: string | null; userId: 
 }
 
 function profileHref(r: { username: string | null }): string | null {
-  // /u/[username] route doesn't exist yet (PARTIAL in the status PDF).
-  // Returning null disables the link until the public profile lands.
+  // Wallet-only users without a username can't be linked yet — they
+  // need to set one in /settings to get a public page.
   return r.username ? `/u/${r.username}` : null;
 }
 
