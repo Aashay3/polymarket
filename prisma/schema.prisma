@@ -52,6 +52,8 @@ model User {
   deposits             Deposit[]
   withdrawals          Withdrawal[]   @relation("WithdrawalUser")
   processedWithdrawals Withdrawal[]   @relation("WithdrawalProcessor")
+  passwordResetTokens  PasswordResetToken[]
+  notificationPrefs    NotificationPreference?
 
   @@index([createdAt])
 }
@@ -258,7 +260,64 @@ model Balance {
   // Lifetime deposit/withdraw tracking
   totalDeposited Decimal  @default(0) @db.Decimal(20, 6)
   totalWithdrawn Decimal  @default(0) @db.Decimal(20, 6)
+  // Per-token balances as a JSON map. `available` is the canonical
+  // USDC balance; `tokens` is the prep-work for true multi-token
+  // wallets. Shape: { "USDT": "12.34", "DAI": "5.00", ... } as decimal
+  // strings (avoid float). Empty until deposit verification gains
+  // multi-token support.
+  tokens         Json?
   updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────────────────────
+// AUTH FLOWS
+// ──────────────────────────────────────────────────────────────
+
+/// Single-use password-reset tokens. Stored hashed (never plain) so a
+/// DB leak doesn't yield active reset URLs. Issued by the
+/// /api/auth/forgot-password endpoint, consumed by /api/auth/reset-password.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  // sha256 hex of the raw token. The raw token only ever exists in
+  // the email URL.
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ──────────────────────────────────────────────────────────────
+// NOTIFICATION PREFS
+// ──────────────────────────────────────────────────────────────
+
+/// Per-user channel preferences. One row per user, created lazily
+/// when the user first opens /settings/notifications. Defaults are
+/// "important things on, marketing things off."
+model NotificationPreference {
+  userId String @id
+
+  // Email channel
+  emailTradeFills        Boolean @default(true)
+  emailMarketResolutions Boolean @default(true)
+  emailSecurityAlerts    Boolean @default(true)
+
+  // Push (browser) channel
+  pushPriceAlerts     Boolean @default(false)
+  pushTrendingMarkets Boolean @default(false)
+  pushSystemUpdates   Boolean @default(false)
+
+  // SMS channel
+  smsSecurityAlerts Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

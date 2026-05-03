@@ -75,17 +75,23 @@ const TX_COLOR: Record<TxType, string> = {
 const TX_FILTERS: TxFilter[] = ["All", "Deposit", "Trade", "Payout", "Withdrawal"];
 
 export default function WalletPage() {
-  const { balance, myTrades } = useWallet();
+  const { balance, tokenBalances, myTrades } = useWallet();
   const [hidden, setHidden] = useState(false);
   const [selectedToken, setSelectedToken] = useState<CryptoSymbol>("USDC");
   const [filter, setFilter] = useState<TxFilter>("All");
   const [expandedTx, setExpandedTx] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Until per-token balances exist on the wallet API, USDC carries the
-  // real number and the rest read as zero.
-  const tokenBalance = (symbol: CryptoSymbol) =>
-    symbol === "USDC" ? balance : 0;
+  // USDC remains canonical (every trade settles in USDC, so the
+  // platform balance number lives on `balance`). Other tokens come
+  // from the per-user `Balance.tokens` map populated by the deposit
+  // worker once multi-token deposits ship — until then non-USDC
+  // entries read as 0 and the strip clearly shows that.
+  const tokenBalance = (symbol: CryptoSymbol): number => {
+    if (symbol === "USDC") return balance;
+    const raw = tokenBalances[symbol];
+    return raw ? parseFloat(raw) : 0;
+  };
   const activeBalance = tokenBalance(selectedToken);
 
   // 24h delta — last point of BALANCE_HISTORY vs current `balance`.

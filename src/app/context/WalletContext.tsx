@@ -121,6 +121,10 @@ function tradeFromDTO(d: TradeDTO, marketQuestion: string): Trade {
 
 interface WalletContextType {
     balance: number;
+    /// Per-token balance map (e.g. { USDT: "12.34", DAI: "0" }). USDC
+    /// stays canonical in `balance` — non-USDC tokens populate when
+    /// multi-token deposits ship. Pass through to the wallet page.
+    tokenBalances: Record<string, string>;
     trades: Trade[];
     myTrades: Trade[];
     markets: Market[];
@@ -153,6 +157,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function WalletProvider({ children }: { children: ReactNode }) {
     const [balance, setBalance] = useState<number>(0);
+    const [tokenBalances, setTokenBalances] = useState<Record<string, string>>({});
     const [trades, setTrades] = useState<Trade[]>([]);
     const [markets, setMarkets] = useState<Market[]>([]);
     const marketsRef = useRef<Market[]>([]);
@@ -184,10 +189,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     const refreshBalance = useCallback(async () => {
         try {
-            const data = await api<{ balance: { available: string } }>(`/api/me`);
+            const data = await api<{
+                balance: { available: string; tokens?: Record<string, string> };
+            }>(`/api/me`);
             setBalance(parseFloat(data.balance.available));
+            setTokenBalances(data.balance.tokens ?? {});
         } catch {
             setBalance(0);
+            setTokenBalances({});
         }
     }, []);
 
@@ -287,6 +296,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setPrevSession(sessionStatus);
         if (sessionStatus !== "authenticated") {
             setBalance(0);
+            setTokenBalances({});
             setTrades([]);
         }
     }
@@ -436,6 +446,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         <WalletContext.Provider
             value={{
                 balance,
+                tokenBalances,
                 trades,
                 myTrades,
                 markets,

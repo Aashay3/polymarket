@@ -20,6 +20,13 @@ export const GET = handler(async () => {
     create: { userId: user.id, available: 0, locked: 0 },
   });
 
+  // `balance.tokens` is a JSON map of per-token balances. USDC stays
+  // canonical in `available` (every trade settles in USDC). Other
+  // tokens populate when multi-token deposit verification ships.
+  const tokens = balance.tokens && typeof balance.tokens === "object"
+    ? (balance.tokens as Record<string, string>)
+    : {};
+
   return ok({
     user: {
       id: user.id,
@@ -35,6 +42,7 @@ export const GET = handler(async () => {
       locked: balance.locked.toString(),
       totalDeposited: balance.totalDeposited.toString(),
       totalWithdrawn: balance.totalWithdrawn.toString(),
+      tokens,
     },
   });
 });

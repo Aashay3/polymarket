@@ -70,7 +70,15 @@ function SignInForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-1">Password</label>
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Password</label>
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-[11px] font-bold text-primary hover:text-white transition-colors"
+                >
+                  Forgot?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 z-10" />
                 <BitsInput
