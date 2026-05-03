@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User, Shield, CreditCard, Bell, Save, CheckCircle2, Globe, Moon, Sun, Lock } from "lucide-react";
+import Link from "next/link";
+import { User, Shield, CreditCard, Bell, Save, CheckCircle2, Globe, Moon, Sun, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BitsCard } from "@/components/ui/bits/BitsCard";
 import { BitsButton } from "@/components/ui/bits/BitsButton";
@@ -17,32 +18,14 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
 
-  // Form State
-  const [username, setUsername] = useState("Felix Trader");
-  const [email, setEmail] = useState("felix.trader@nexora.io");
-  const [twoFactor, setTwoFactor] = useState(true);
-  const [currency, setCurrency] = useState("INR");
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
+  // Form State (display-only on the overview tab; the security tab now
+  // links to /settings/security where the real form lives + posts to
+  // /api/me/password)
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [currency, setCurrency] = useState("USD");
   const [notifs, setNotifs] = useState({ email: true, push: false, sms: true });
-
-  const handleUpdatePassword = () => {
-    if (!currentPw || !newPw || !confirmPw) {
-      toast({ type: "error", title: "Missing fields", description: "Fill in every password field." });
-      return;
-    }
-    if (newPw.length < 8) {
-      toast({ type: "error", title: "Password too short", description: "Use at least 8 characters." });
-      return;
-    }
-    if (newPw !== confirmPw) {
-      toast({ type: "error", title: "Passwords don't match" });
-      return;
-    }
-    setCurrentPw(""); setNewPw(""); setConfirmPw("");
-    toast({ type: "success", title: "Password updated" });
-  };
 
   const handleSave = () => {
     setSaved(true);
@@ -103,49 +86,46 @@ export default function SettingsPage() {
 
         {activeTab === "Security" && (
           <div className="space-y-8">
-            <BitsCard className="p-8 space-y-10">
-              <div className="flex items-start justify-between">
+            <BitsCard className="p-8 space-y-6">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="space-y-1">
                   <h3 className="text-base font-bold text-white">Two-Factor Authentication</h3>
-                  <p className="text-xs text-muted-foreground max-w-md leading-relaxed">Add an extra layer of security to your account by requiring a code from your mobile device when logging in.</p>
+                  <p className="text-xs text-muted-foreground max-w-md leading-relaxed">
+                    TOTP enrollment + recovery codes ship in the next release.
+                    Toggle below is a preview only.
+                  </p>
                 </div>
                 <BitsToggle enabled={twoFactor} onChange={setTwoFactor} />
               </div>
 
-              <div className="pt-8 border-t border-white/5">
-                <h3 className="text-base font-bold text-white mb-6">Change Password</h3>
-                <div className="space-y-6">
-                  <BitsInput
-                    type="password"
-                    placeholder="Current Password"
-                    value={currentPw}
-                    onChange={(e) => setCurrentPw(e.target.value)}
-                    autoComplete="current-password"
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <BitsInput
-                      type="password"
-                      placeholder="New Password"
-                      value={newPw}
-                      onChange={(e) => setNewPw(e.target.value)}
-                      autoComplete="new-password"
-                    />
-                    <BitsInput
-                      type="password"
-                      placeholder="Confirm New Password"
-                      value={confirmPw}
-                      onChange={(e) => setConfirmPw(e.target.value)}
-                      autoComplete="new-password"
-                    />
-                  </div>
-                  <BitsButton
-                    variant="outline"
-                    onClick={handleUpdatePassword}
-                    className="w-fit px-8 h-10 rounded-xl flex items-center gap-2"
-                  >
-                    <Lock className="w-3.5 h-3.5" /> Update Password
-                  </BitsButton>
+              <div className="pt-6 border-t border-white/5 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h3 className="text-base font-bold text-white">Change password</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Verifies your current password before applying the new one.
+                  </p>
                 </div>
+                <Link
+                  href="/settings/security"
+                  className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary/90 transition-colors"
+                >
+                  Open password form <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <div className="pt-6 border-t border-white/5 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h3 className="text-base font-bold text-white">Active sessions</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Per-device session list — coming soon.
+                  </p>
+                </div>
+                <Link
+                  href="/settings/security"
+                  className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold hover:bg-white/10 transition-colors"
+                >
+                  View <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </BitsCard>
           </div>
