@@ -1,12 +1,10 @@
 """
-Generate NEXORA implementation STATUS audit as a PDF.
+Generate NEXORA implementation STATUS as a PDF.
 
-Includes:
-  - Per-item status against the original roadmap (12 items)
-  - Extras shipped that weren't in the original spec
-  - Remaining / incomplete punch-list
-  - Full navigation flowchart (monospace block)
-  - Recommended build order to close out the gaps
+This is the comprehensive project status document — covers what's
+done, what's left, what needs the user's involvement (deploys / API
+keys / decisions), full navigation flow, complete feature + API
+inventory, and the deployment checklist.
 
 Run:
     python scripts/generate_status_pdf.py
@@ -42,6 +40,8 @@ DONE_BG = HexColor("#DCFCE7")
 DONE_FG = HexColor("#15803D")
 PARTIAL_BG = HexColor("#FEF9C3")
 PARTIAL_FG = HexColor("#A16207")
+BLOCKED_BG = HexColor("#FED7AA")
+BLOCKED_FG = HexColor("#9A3412")
 MISSING_BG = HexColor("#FEE2E2")
 MISSING_FG = HexColor("#B91C1C")
 DEFERRED_BG = HexColor("#E5E7EB")
@@ -50,7 +50,6 @@ DEFERRED_FG = HexColor("#374151")
 
 def build_styles():
     base = getSampleStyleSheet()
-
     return {
         "title": ParagraphStyle(
             "title", parent=base["Title"],
@@ -67,10 +66,15 @@ def build_styles():
             fontName="Helvetica-Bold", fontSize=15, leading=20,
             textColor=INK, spaceBefore=14, spaceAfter=8,
         ),
+        "subsection_h": ParagraphStyle(
+            "subsection_h", parent=base["Heading2"],
+            fontName="Helvetica-Bold", fontSize=12, leading=16,
+            textColor=VIOLET_DARK, spaceBefore=10, spaceAfter=4,
+        ),
         "item_h": ParagraphStyle(
             "item_h", parent=base["Heading2"],
-            fontName="Helvetica-Bold", fontSize=12, leading=16,
-            textColor=INK, spaceBefore=10, spaceAfter=2,
+            fontName="Helvetica-Bold", fontSize=11, leading=14,
+            textColor=INK, spaceBefore=8, spaceAfter=2,
         ),
         "body": ParagraphStyle(
             "body", parent=base["Normal"],
@@ -85,6 +89,10 @@ def build_styles():
         "tag_done": ParagraphStyle(
             "tag_done", fontName="Helvetica-Bold", fontSize=8.5,
             leading=11, textColor=DONE_FG, alignment=TA_LEFT,
+        ),
+        "tag_blocked": ParagraphStyle(
+            "tag_blocked", fontName="Helvetica-Bold", fontSize=8.5,
+            leading=11, textColor=BLOCKED_FG, alignment=TA_LEFT,
         ),
         "tag_partial": ParagraphStyle(
             "tag_partial", fontName="Helvetica-Bold", fontSize=8.5,
@@ -102,6 +110,10 @@ def build_styles():
             "mono", fontName="Courier", fontSize=8, leading=10,
             textColor=INK, spaceAfter=0,
         ),
+        "mono_command": ParagraphStyle(
+            "mono_command", fontName="Courier-Bold", fontSize=9,
+            leading=12, textColor=VIOLET_DARK, leftIndent=10, spaceAfter=2,
+        ),
         "callout": ParagraphStyle(
             "callout", parent=base["Normal"],
             fontName="Helvetica", fontSize=10, leading=14,
@@ -110,316 +122,547 @@ def build_styles():
     }
 
 
-# ── Status data ────────────────────────────────────────────────
-# Each item: (n, title, status, status_label, done, missing)
-STATUS = "status"
+# ── Status constants ──────────────────────────────────────────
 DONE = "done"
 PARTIAL = "partial"
+BLOCKED = "blocked"
 MISSING = "missing"
 DEFERRED = "deferred"
 
+
+# ── Original 12-item roadmap, updated ─────────────────────────
 ITEMS = [
     {
-        "n": 1,
-        "title": "Home page",
-        "status": DONE,
-        "label": "COMPLETE+",
-        "done": "HeroStrip, CategoryCarousel, multiple live rails (ClosingToday, "
-                "TopMovers, ForYou, EditorialPicks, PositionsMoving, "
-                "CrowdVsReality, TradeTicker, StreakBanner), SSE pipe via "
-                "/api/stream, MarketCardSkeleton, empty/error states.",
-        "missing": "Far exceeds the original spec; nothing critical missing.",
+        "n": 1, "title": "Home page", "status": DONE, "label": "COMPLETE+",
+        "done": "HeroStrip slideshow, CategoryCarousel, ten home rails "
+                "(ClosingToday, TopMovers, ForYou, EditorialPicks, "
+                "PositionsMoving, CrowdVsReality, TradeTicker, StreakBanner, "
+                "LeaderboardSection, CoinFlip), SSE pipeline via /api/stream, "
+                "skeletons + empty/error states. LeaderboardSection now wired "
+                "to /api/leaderboard. StreakBanner reads real streak from "
+                "WalletContext.",
+        "missing": "&mdash;",
     },
     {
-        "n": 2,
-        "title": "Market detail (Bet) screen",
-        "status": DONE,
+        "n": 2, "title": "Market detail (Bet) screen", "status": DONE,
         "label": "COMPLETE",
-        "done": "PriceHistoryChart + /api/markets/[id]/price-history, TradeBox "
-                "(size, fees, slippage, position summary), OutcomeList, "
-                "MarketTabs, RightSidebar, SocialSection (comments), "
-                "confirm/error toasts via ToastContext, POST /api/trades.",
-        "missing": "—",
+        "done": "PriceHistoryChart with /api/markets/[id]/price-history, "
+                "TradeBox (size, fees, slippage, position summary), OutcomeList, "
+                "MarketTabs, RightSidebar with related markets, SocialSection "
+                "comments, confirm/error toasts, POST /api/trades.",
+        "missing": "&mdash;",
     },
     {
-        "n": 3,
-        "title": "Trending page",
-        "status": PARTIAL,
-        "label": "PARTIAL",
-        "done": "Filter + sort (volume / movers / ending / newest) + search "
-                "wired to live SSE markets via WalletContext.",
-        "missing": "Infinite scroll. Dedicated /api/trending endpoint with "
-                   "cursor pagination (currently re-uses /api/markets).",
+        "n": 3, "title": "Trending page", "status": DONE, "label": "COMPLETE",
+        "done": "Cursor-paginated infinite scroll via IntersectionObserver "
+                "(240px rootMargin), 300ms search debounce, sort: newest / "
+                "ending / most-traded / biggest-movers, dedupe-by-id when "
+                "appending. Page-size 18 fills 6 rows of the 3-col grid.",
+        "missing": "Live SSE updates only on the first batch (intentional "
+                   "tradeoff for infinite scroll &mdash; market detail page "
+                   "stays authoritative).",
     },
     {
-        "n": 4,
-        "title": "Portfolio page",
-        "status": PARTIAL,
-        "label": "PARTIAL",
-        "done": "Open-positions grouping by market+outcome, P&amp;L sparkline, "
-                "history list, close-position via /api/positions/close.",
-        "missing": "Claim button on resolved-win rows. POST /api/claim endpoint.",
+        "n": 4, "title": "Portfolio page", "status": DONE, "label": "COMPLETE",
+        "done": "Active / Settled tabs. Active = OPEN positions with live AMM "
+                "pricing + Close button. Settled = RESOLVED positions with W/L "
+                "badge, invested/payout/outcome stats, Claim button on winners "
+                "(POST /api/claim &mdash; idempotent; off-chain payouts already "
+                "credited at resolve time). Realized-PnL pill in the Settled "
+                "tab header. Trade history table at the bottom.",
+        "missing": "&mdash;",
     },
     {
-        "n": 5,
-        "title": "Wallet page",
-        "status": DONE,
-        "label": "COMPLETE",
-        "done": "Hero balance + 24h PnL chip, multi-currency token strip "
-                "(selectable), 3-stat row (Cash / In Open Trades / Realized "
-                "PnL), filtered tx history (All / Deposit / Trade / Payout / "
-                "Withdrawal), deposit + withdraw subroutes, sidebar promo / "
-                "network / help cards. Just redesigned.",
-        "missing": "Per-token balances are mocked (USDC=real, others=0) "
-                   "until /api/me returns a per-token map.",
+        "n": 5, "title": "Wallet page", "status": DONE, "label": "COMPLETE",
+        "done": "Violet hero with 24h PnL chip + Sparkline. Multi-currency token "
+                "strip (selectable; USDC canonical, others read from "
+                "Balance.tokens). Three-stat row (Cash / In Open Trades / "
+                "Realized PnL). Filtered tx history (All / Deposit / Trade / "
+                "Payout / Withdrawal). Sidebar promo + network info + help.",
+        "missing": "Per-token balances populate when multi-token deposit "
+                   "verification ships (currently non-USDC reads as 0).",
     },
     {
-        "n": 6,
-        "title": "Profile page",
-        "status": PARTIAL,
-        "label": "PARTIAL",
-        "done": "/profile (581 lines &mdash; stats, badges, etc.), /api/me.",
-        "missing": "Public route /u/[username]/page.tsx. Public-vs-private "
-                   "toggle + endpoint.",
+        "n": 6, "title": "Profile page", "status": DONE, "label": "COMPLETE",
+        "done": "/profile (server component, 80 lines): redirects to /u/[username] "
+                "when set, otherwise prompts to set one. /u/[username] is the "
+                "single source of truth for both self and public viewers &mdash; "
+                "real stats (PnL, trades, win rate, leaderboard rank), recent "
+                "trade tape with market links, Share button, Edit shortcut for "
+                "self. /api/u/[username] computes win rate from settled "
+                "positions on resolved markets.",
+        "missing": "&mdash;",
     },
     {
-        "n": 7,
-        "title": "Search modal",
-        "status": DONE,
-        "label": "COMPLETE",
+        "n": 7, "title": "Search modal", "status": DONE, "label": "COMPLETE",
         "done": "SearchModal (184 lines), Cmd-K + '/' triggers wired in Navbar, "
                 "result click routes to relevant page.",
         "missing": "Uses /api/markets &mdash; no dedicated /api/search "
-                   "(acceptable for current corpus size).",
+                   "(acceptable for current corpus).",
     },
     {
-        "n": 8,
-        "title": "Notifications",
-        "status": PARTIAL,
-        "label": "PARTIAL",
-        "done": "NotificationsDropdown in navbar, /api/notifications, "
-                "SSE-pushed unread count, /settings/notifications for prefs, "
-                "NotificationsPrompt component.",
-        "missing": "Full /notifications page. PATCH read-state endpoint "
-                   "(/api/notifications/[id]/read).",
+        "n": 8, "title": "Notifications", "status": DONE, "label": "COMPLETE",
+        "done": "NotificationsDropdown in navbar with SSE-pushed unread count. "
+                "Full /notifications page with All / Unread tabs, day-grouped "
+                "rows, type-tinted icons, optimistic mark-as-read, Mark-all-read. "
+                "Footer split: 'See all' &rarr; /notifications, 'Settings' "
+                "&rarr; /settings/notifications.",
+        "missing": "Email + SMS dispatchers aren't wired (preferences persist "
+                   "but actual delivery needs Resend / Twilio).",
     },
     {
-        "n": 9,
-        "title": "Settings sub-pages",
-        "status": PARTIAL,
-        "label": "PARTIAL",
-        "done": "/settings (general), /settings/notifications.",
-        "missing": "/settings/security (password, 2FA, sessions). "
-                   "/settings/currency.",
+        "n": 9, "title": "Settings sub-pages", "status": DONE, "label": "COMPLETE",
+        "done": "Tabbed /settings overview. Standalone deep-link targets: "
+                "/settings/notifications (real persistence via "
+                "GET/PATCH /api/me/notifications/preferences), /settings/security "
+                "(real password change via POST /api/me/password), "
+                "/settings/currency (display preference, localStorage). "
+                "/settings mega-page Security tab now links to the standalone "
+                "form rather than the old fake handler.",
+        "missing": "2FA TOTP + active sessions are intentional UI placeholders "
+                   "(see Action Items).",
     },
     {
-        "n": 10,
-        "title": "Auth screens",
-        "status": PARTIAL,
-        "label": "PARTIAL",
+        "n": 10, "title": "Auth screens", "status": DONE, "label": "COMPLETE",
         "done": "/auth/signin, /auth/signup, NextAuth wired, signed-out "
-                "routing for Wallet/Bell.",
-        "missing": "/auth/forgot-password (request) + /auth/reset-password "
-                   "(token consume).",
+                "routing for Wallet/Bell. /auth/forgot-password and "
+                "/auth/reset-password (POST /api/auth/forgot-password issues "
+                "sha256-hashed token, /api/auth/reset-password consumes once + "
+                "invalidates other outstanding tokens). 'Forgot?' link inline "
+                "on signin.",
+        "missing": "Email dispatcher logs the reset URL to console + AuditLog "
+                   "in dev (dev-mode viewer at /dashboard/admin/audit-log "
+                   "surfaces it). Swap for Resend in production.",
     },
     {
-        "n": 11,
-        "title": "Leaderboard",
-        "status": PARTIAL,
-        "label": "PARTIAL",
-        "done": "/leaderboard page exists. /api/leaderboard endpoint exists.",
-        "missing": "Page renders 5 hardcoded mock rows &mdash; no fetch wired. "
-                   "No timeframe toggle. No 'your rank' callout.",
+        "n": 11, "title": "Leaderboard", "status": DONE, "label": "COMPLETE",
+        "done": "/leaderboard fully wired: timeframe toggle (All / 30d / 7d), "
+                "your-rank callout (RANK() over the full aggregate, even outside "
+                "top N), real avatars with initial fallback, current user "
+                "highlighted with a 'You' badge, rows link to /u/[username] when "
+                "username is set. Home strip (LeaderboardSection) now also "
+                "wired to /api/leaderboard.",
+        "missing": "&mdash;",
     },
     {
-        "n": 12,
-        "title": "Smart contracts",
-        "status": DEFERRED,
-        "label": "DEFERRED",
-        "done": "&mdash;",
-        "missing": "Deferred by design. USDC custody, on-chain settlement, "
-                   "fee router. Ship centralised first; migrate later.",
+        "n": 12, "title": "Smart contracts", "status": BLOCKED,
+        "label": "DEPLOY-BLOCKED",
+        "done": "Foundry scaffold with PredictionMarket.sol (constant-product "
+                "AMM, owner-resolved, internal share balances, withdrawLP for "
+                "post-resolution surplus). 14 unit tests + 1 fuzz on the "
+                "k-invariant. MockUSDC for tests. Deploy script targeting "
+                "Anvil + Polygon Amoy. viem read-side wrapper "
+                "(src/lib/contracts/predictionMarket.ts). Server-side admin "
+                "signer + admin-actions wrappers (createMarketOnChain, "
+                "resolveMarketOnChain). Hybrid mode: when "
+                "ENABLE_ON_CHAIN_SETTLEMENT=true, /api/admin/markets and "
+                ".../[id]/resolve mirror the action on-chain.",
+        "missing": "Deployed to Polygon Amoy (your action &mdash; needs wallet, "
+                   "MATIC, test USDC). User-trade wiring (buy/sell/claim) needs "
+                   "wallet-connect on the client. Audit before mainnet.",
     },
 ]
 
 
-EXTRAS = [
-    "<b>LeftRail</b> &mdash; full collapsible / mobile-drawer sidebar; "
-    "replaced the old AccountDrawer + NavigationDrawer.",
-    "<b>Sports vertical</b> &mdash; /sports, /sports/all, /sports/esports.",
-    "<b>CurrencyPicker</b> in navbar &mdash; multi-token switching, "
-    "glow-ring active state, Check badge, scrollbar-hide.",
-    "<b>Dashboard subroutes</b> &mdash; /dashboard/activity, "
-    "/dashboard/admin, /dashboard/markets.",
-    "<b>Admin tools</b> &mdash; market resolution, withdrawal "
-    "approve / reject / complete (/api/admin/markets/[id]/resolve, "
-    "/api/admin/withdrawals/*).",
-    "<b>Audit log API</b> &mdash; /api/admin/audit-log.",
-    "<b>Cron job</b> &mdash; /api/cron/close-expired auto-closes "
-    "expired markets.",
-    "<b>Health + status endpoints</b> &mdash; /api/health, /api/status.",
-    "<b>SIWE nonce endpoint</b> &mdash; /api/auth/siwe/nonce "
-    "(web3 sign-in foundation).",
-    "<b>Coin Flip game</b> &mdash; CoinFlip.tsx home module.",
-    "<b>CryptoIcon</b> + 7-token spec system with PNG fallbacks.",
-    "<b>Navbar polish</b> &mdash; icon-pill nav, narrower search, hamburger "
-    "on the right, profile-icon removed, Wallet+Bell always visible.",
-    "<b>Wallet hero redesign</b> &mdash; violet&rarr;fuchsia gradient, "
-    "sparkline overlay, sidebar promo column.",
+# ── Built since last audit (this sweep) ──────────────────────
+SHIPPED_THIS_SWEEP = [
+    "<b>Smart contracts (Tier-2 hybrid)</b> &mdash; entire contracts/ "
+    "Foundry project, deploy script, viem wrappers, admin API mirroring.",
+    "<b>Leaderboard</b> &mdash; /api/leaderboard timeframe + your-rank, "
+    "page wired to it, home strip wired to it.",
+    "<b>/notifications</b> full page, dropdown footer split.",
+    "<b>/u/[username]</b> public profile + /api/u/[username] with real stats.",
+    "<b>/settings/security</b> + real POST /api/me/password.",
+    "<b>/settings/currency</b> with localStorage + flag picker.",
+    "<b>Trending</b> infinite scroll via IntersectionObserver.",
+    "<b>Portfolio</b> Active/Settled tabs + POST /api/claim.",
+    "<b>/profile</b> rewrite (581 &rarr; 80 lines, real data).",
+    "<b>Mock-data sweep</b> &mdash; home leaderboard + /support contact form + "
+    "/settings mega-page password handler all replaced with real wiring.",
+    "<b>Forgot-password flow</b> &mdash; /auth/forgot-password + "
+    "/auth/reset-password pages, two API endpoints, sha256-hashed tokens, "
+    "token invalidation on use.",
+    "<b>Notification preferences persistence</b> &mdash; new model, "
+    "GET/PATCH endpoint, fully rewritten settings page with dirty tracking.",
+    "<b>Per-token wallet balances plumbing</b> &mdash; Balance.tokens JSON "
+    "column, /api/me returns the map, WalletContext.tokenBalances exposes it.",
+    "<b>Streak tracking</b> &mdash; computeStreak() on-demand from Trade "
+    "table, /api/me returns it, optimistic bump in placeTrade, StreakBanner "
+    "reads real value with adaptive copy.",
+    "<b>Admin audit-log viewer</b> &mdash; /dashboard/admin/audit-log surfaces "
+    "the AuditLog stream with action filter; lifts dev-mode reset URLs out of "
+    "metadata so forgot-password is testable without Resend.",
+    "<b>Schema migration</b> &mdash; PasswordResetToken + NotificationPreference "
+    "models + Balance.tokens column. Hand-written migration SQL ready to apply.",
 ]
 
 
-PUNCH_LIST = [
-    ("Trending",      "Infinite scroll + dedicated /api/trending with cursor pagination"),
-    ("Portfolio",     "Claim button on resolved-win rows + POST /api/claim"),
-    ("Profile",       "Public route /u/[username]/page.tsx + public-toggle prefs"),
-    ("Notifications", "/notifications full page + PATCH /api/notifications/[id]/read"),
-    ("Settings",      "/settings/security (password, 2FA, sessions). /settings/currency."),
-    ("Auth",          "/auth/forgot-password (request) + /auth/reset-password (token)"),
-    ("Leaderboard",   "Wire /api/leaderboard, timeframe toggle, your-rank callout (kill mock data)"),
-    ("Wallet",        "Real per-token balances on /api/me (replace tokenBalance() mock)"),
-    ("Smart contracts","Deferred (item 12; needs Solidity engineer)"),
+# ── Action items: things only the user can do ─────────────────
+ACTION_ITEMS = [
+    {
+        "title": "Apply the schema migration",
+        "why": "PasswordResetToken + NotificationPreference + Balance.tokens "
+               "live in a hand-written migration that hasn't run against your "
+               "DB yet.",
+        "how": "npm run db:deploy",
+        "blocker_for": "/auth/forgot-password, /api/me/notifications/preferences, "
+                       "Balance.tokens reads",
+        "effort": "30 seconds",
+    },
+    {
+        "title": "Deploy smart contracts to Polygon Amoy",
+        "why": "Hybrid on-chain mirror for admin actions stays inert until "
+               "the contract address is set. Mainnet is OFF-LIMITS without an "
+               "audit (see deferred items).",
+        "how": (
+            "1) Get a wallet, fund with Amoy MATIC + test USDC<br/>"
+            "2) cd contracts && forge install openzeppelin/openzeppelin-contracts --no-commit<br/>"
+            "3) forge install foundry-rs/forge-std --no-commit<br/>"
+            "4) forge test -vv  (sanity check)<br/>"
+            "5) export DEPLOYER_PRIVATE_KEY=0x... ; export USDC_ADDRESS=0x41E94...7582<br/>"
+            "6) forge script script/Deploy.s.sol --rpc-url amoy --broadcast --verify<br/>"
+            "7) Copy the printed PredictionMarket address into "
+            "NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS<br/>"
+            "8) Set ENABLE_ON_CHAIN_SETTLEMENT=true and ADMIN_PRIVATE_KEY"
+        ),
+        "blocker_for": "Any on-chain provenance for market lifecycle events",
+        "effort": "30 minutes once you have the wallet",
+    },
+    {
+        "title": "Wire a real email provider for password resets",
+        "why": "Currently dispatchResetEmail() in /api/auth/forgot-password "
+               "logs the URL to console + writes it to AuditLog. Dev viewer at "
+               "/dashboard/admin/audit-log lifts it out for testing. Production "
+               "needs an actual mailer.",
+        "how": (
+            "1) Sign up for Resend (recommended) / Postmark / SES<br/>"
+            "2) Get API key, add to .env: RESEND_API_KEY=re_...<br/>"
+            "3) Replace the body of dispatchResetEmail() with the provider's send call<br/>"
+            "4) Verify the sender domain / set up SPF + DKIM"
+        ),
+        "blocker_for": "Production-grade forgot-password",
+        "effort": "1 hour",
+    },
+    {
+        "title": "Wallet-connect for user trades (Tier-2 day 5)",
+        "why": "Users currently trade via /api/trades against a server-side "
+               "balance. Once contracts are deployed, the on-chain claim() / "
+               "buy() / sell() flow needs the user's own wallet to sign txs.",
+        "how": (
+            "1) Get a WalletConnect Cloud projectId<br/>"
+            "2) Install: npm i @web3modal/wagmi wagmi @tanstack/react-query<br/>"
+            "3) Add WagmiProvider at the root layout<br/>"
+            "4) Replace placeTrade / closePosition in WalletContext with "
+            "writeContract calls<br/>"
+            "5) Add a position migration script for existing DB-only positions"
+        ),
+        "blocker_for": "Real on-chain trading",
+        "effort": "1-2 days",
+    },
+    {
+        "title": "2FA TOTP enrollment + recovery codes",
+        "why": "/settings/security has a 2FA toggle marked 'coming soon'. "
+               "Needs a TOTP library, recovery code generation, and an enroll "
+               "/ verify flow.",
+        "how": (
+            "1) Add otpauth / @otplib/preset-default<br/>"
+            "2) New User.totpSecret column (encrypted at rest)<br/>"
+            "3) Enroll: scan QR &rarr; verify code &rarr; persist secret<br/>"
+            "4) Recovery codes: hash-and-store 10 single-use backups<br/>"
+            "5) Auth.js callback: gate sign-in on TOTP verification when enabled"
+        ),
+        "blocker_for": "True 2FA",
+        "effort": "1 day",
+    },
+    {
+        "title": "Active session tracking",
+        "why": "/settings/security shows 'per-device session tracking is "
+               "coming soon.' NextAuth's Session model doesn't capture device "
+               "metadata by default.",
+        "how": (
+            "1) Extend Session model with userAgent + ipAddress + lastSeenAt<br/>"
+            "2) Update Auth.js JWT callback to capture them at sign-in<br/>"
+            "3) New GET /api/me/sessions + DELETE /api/me/sessions/[id]<br/>"
+            "4) Render the list on /settings/security with a Revoke button"
+        ),
+        "blocker_for": "User-controlled session revocation",
+        "effort": "1 day",
+    },
+    {
+        "title": "Real FX rates for /settings/currency",
+        "why": "Currency picker shows indicative rates; switching the locale "
+               "doesn't actually convert anything in the UI.",
+        "how": (
+            "1) Add an FX provider integration (CoinGecko / exchangerate.host)<br/>"
+            "2) New /api/fx with 5-minute cache<br/>"
+            "3) New useFx() hook + a Money component that formats per locale"
+        ),
+        "blocker_for": "Real-currency display across the app",
+        "effort": "2 hours",
+    },
+    {
+        "title": "Smart-contract audit",
+        "why": "PredictionMarket.sol is demo-only. Mainnet deploy without "
+               "audit = real money loss risk.",
+        "how": "Pick a firm (Code4rena / OpenZeppelin / Trail of Bits), "
+               "scope the contracts, schedule an audit window, fix findings, "
+               "re-audit critical changes.",
+        "blocker_for": "Real-funds production deploy",
+        "effort": "Weeks + audit cost",
+    },
 ]
 
 
-BUILD_ORDER = [
-    "<b>Wire /leaderboard to /api/leaderboard</b> + add timeframe toggle. "
-    "Lowest risk; removes the only fully-mocked page in the app.",
-    "<b>/notifications full page</b> + PATCH read-state. UI exists in "
-    "NotificationsDropdown; just needs a list page.",
-    "<b>/u/[username] public profile</b> + /api/u/[username]. Unblocks "
-    "leaderboard row clicks.",
-    "<b>/auth/forgot-password</b> + reset flow. NextAuth supports email "
-    "providers out of the box.",
-    "<b>/settings/security</b> + /settings/currency. Add stub pages first; "
-    "wire endpoints after.",
-    "<b>Trending infinite scroll</b> + cursor endpoint.",
-    "<b>Portfolio Claim</b> button + /api/claim.",
-    "<b>Per-token wallet balances</b> on /api/me. Replace the tokenBalance() "
-    "mock in src/app/wallet/page.tsx.",
-    "<b>Smart contracts</b> &mdash; deferred indefinitely.",
-]
-
-
-# ── Flowchart (monospace) ─────────────────────────────────────
-FLOWCHART = r"""
+# ── Navigation flow (full route map) ──────────────────────────
+NAV_FLOWCHART = r"""
                                 +----------------------------------------+
                                 |             ENTRY POINTS               |
                                 +-----------------+----------------------+
                                                   |
-            +-------------------------------------+-------------------------------------+
-            |                                     |                                     |
-    +-------v--------+                  +---------v----------+              +-----------v----------+
+            +-------------------------------------+-----------------------------------+
+            |                                     |                                   |
+    +-------v--------+                  +---------v----------+              +---------v------------+
     |     NAVBAR     |                  |      LEFTRAIL      |              |    HOME (/) FEED     |
-    |  (top, fixed)  |                  |  (xl+ sidebar /    |              |   (HeroStrip rails)  |
+    |  (top, fixed)  |                  |  (xl+ sidebar /    |              |  HeroStrip + 10 rails|
     |                |                  |   mobile drawer)   |              |                      |
-    +-------+--------+                  +---------+----------+              +-----------+----------+
-            |                                     |                                     |
-   +--------+----------+         +----------------+-------------+         +-------------+-------------+
-   |        |          |         |                |             |         |             |             |
- Logo   Markets/    Wallet     Sports v        Trending      Portfolio  Hero        Live rails    Streak/Promo
-  (/)   Activity/   pill ($)   /sports          (/trending)  (/portfolio) slides     market cards   banners
-        Leaderboard  -> /wallet /sports/all                              -> /?cat    -> /market/[id] -> /wallet/deposit
-                                /sports/esports                          filter (/)
+    +-------+--------+                  +---------+----------+              +---------+------------+
+            |                                     |                                   |
+   +--------+----------+         +----------------+--------------+         +----------+--------------+
+   |        |          |         |       |        |             |         |          |              |
+ Logo   Markets/    Wallet     Sports v  Trending Portfolio   Profile   Hero       Live rails   StreakBanner
+  (/)   Activity/   pill ($)   /sports  (/trending) (/portfolio) (/profile) slides   market cards (real streak
+        Leaderboard -> /wallet  /sports/all                                -> /?cat  -> /market/[id] from API)
+                                /sports/esports                            filter (/)               -> /wallet/deposit
 
-   Search -> SearchModal      Trending row         Portfolio row
-    (/, Cmd-K)                -> /market/[id]       -> /market/[id]
-    -> /market/[id]                                  (Claim btn MISSING on resolved wins)
+   Search -> SearchModal      Trending row         Portfolio Settled tab
+    (/, Cmd-K)                -> /market/[id]       -> Claim button -> POST /api/claim
+    -> /market/[id]                                  (off-chain auto-paid; on-chain via wallet later)
 
    Bell -> NotificationsDropdown
      each item -> /market/[id]
-     "View all" -> /notifications  [MISSING - full page not built]
+     "See all" -> /notifications  [DONE]
+     "Settings" -> /settings/notifications  [DONE]
 
    Hamburger (xl-) -> opens LeftRail drawer
 
    Sign-in pill (signed-out) -> /auth/signin
      after success -> /
      "Create account" -> /auth/signup
-     "Forgot password?" -> [MISSING]
+     "Forgot?" -> /auth/forgot-password [DONE]
+                 -> email link -> /auth/reset-password?token=...
+                 -> POST /api/auth/reset-password -> /auth/signin?reset=ok
 
 
-+--------------------------- PRIMARY PAGES ---------------------------+
++--------------------------- PRIMARY ROUTES ---------------------------+
 |                                                                     |
 |   /  (Home)                                                         |
-|      ├── HeroStrip slide CTA   -> /?category=<X>                    |
-|      ├── MarketCard            -> /market/[id]                      |
-|      ├── StreakBanner          -> /wallet/deposit                   |
-|      └── LeaderboardSection    -> /leaderboard                      |
+|      |- HeroStrip slide CTA   -> /?category=<X>                     |
+|      |- MarketCard            -> /market/[id]                       |
+|      |- LeaderboardSection    -> rows link /u/[username] / -> /leaderboard |
+|      |- StreakBanner          -> /wallet/deposit                    |
 |                                                                     |
-|   /market/[id]    [COMPLETE]                                        |
-|      ├── TradeBox YES/NO       -> POST /api/trades                  |
-|      │     (toast confirm; SSE updates portfolio)                   |
-|      ├── PriceHistoryChart     <- /api/markets/[id]/price-history   |
-|      ├── SocialSection         (comments)                           |
-|      └── RightSidebar          -> related -> /market/[id]           |
+|   /market/[id]    [DONE]                                            |
+|      |- TradeBox YES/NO       -> POST /api/trades                   |
+|      |- PriceHistoryChart     <- /api/markets/[id]/price-history    |
+|      |- SocialSection         (comments)                            |
+|      `- RightSidebar          -> related -> /market/[id]            |
 |                                                                     |
-|   /trending      [PARTIAL]                                          |
-|      ├── CategoryChips         (filter in place)                    |
-|      ├── Sort + search         (in place)                           |
-|      ├── MarketCard            -> /market/[id]                      |
-|      └── Infinite scroll       [MISSING - currently shows all]      |
+|   /trending      [DONE]                                             |
+|      |- CategoryChips, sort + search (300ms debounce)               |
+|      |- MarketCard            -> /market/[id]                       |
+|      `- IntersectionObserver  -> /api/markets cursor pagination     |
 |                                                                     |
-|   /portfolio     [PARTIAL]                                          |
-|      ├── Holdings table        -> /market/[id]                      |
-|      ├── Close position        -> POST /api/positions/close         |
-|      └── Claim resolved win    [MISSING - no /api/claim]            |
+|   /portfolio     [DONE]                                             |
+|      |- Active tab            -> live AMM pricing + Close button    |
+|      `- Settled tab           -> W/L badge + Claim -> /api/claim    |
 |                                                                     |
-|   /wallet        [COMPLETE - just redesigned]                       |
-|      ├── Hero balance + 24h PnL                                     |
-|      ├── Token strip (multi-currency, switchable)                   |
-|      ├── Stats: Cash * Open * PnL                                   |
-|      ├── Filtered tx list                                           |
-|      ├── Deposit CTA           -> /wallet/deposit                   |
-|      ├── Withdraw CTA          -> /wallet/withdraw                  |
-|      ├── Sidebar bonus tile    -> /wallet/deposit                   |
-|      └── Sidebar help tile     -> /support                          |
+|   /wallet        [DONE]                                             |
+|      |- Hero + 24h PnL chip + Sparkline                             |
+|      |- Token strip (selectable, USDC canonical)                    |
+|      |- Stats: Cash * Open * PnL                                    |
+|      |- Filtered tx list                                            |
+|      |- Deposit -> /wallet/deposit ; Withdraw -> /wallet/withdraw   |
+|      `- Sidebar promo / network / help                              |
 |                                                                     |
-|   /profile       [PARTIAL]                                          |
-|      ├── Own stats / badges    (uses /api/me)                       |
-|      └── /u/[username]         [MISSING - public profile route]     |
+|   /profile [DONE]   /u/[username]  [DONE]                           |
+|      Server-side redirect from /profile to /u/[username] when set;  |
+|      otherwise prompts to set a username in /settings.              |
 |                                                                     |
-|   /leaderboard   [PARTIAL]                                          |
-|      ├── Top traders table     [5 MOCK ROWS - not wired]            |
-|      └── row click             -> /u/[username] (route missing)     |
+|   /leaderboard   [DONE]                                             |
+|      |- Timeframe (All / 30d / 7d) + your-rank callout              |
+|      |- Real avatars + 'You' badge                                  |
+|      `- Row click -> /u/[username]                                  |
 |                                                                     |
-|   /settings      [PARTIAL]                                          |
-|      ├── /settings/notifications  [DONE]                            |
-|      ├── /settings/security       [MISSING]                         |
-|      └── /settings/currency       [MISSING]                         |
+|   /notifications [DONE]                                             |
+|      |- All / Unread tabs (with live count)                         |
+|      |- Day-grouped list, type-tinted icons                         |
+|      `- Optimistic mark-as-read; Mark-all-read button               |
+|                                                                     |
+|   /settings  [DONE]                                                 |
+|      |- /settings/notifications  [DONE - persists]                  |
+|      |- /settings/security       [DONE - real password change]      |
+|      `- /settings/currency       [DONE - localStorage]              |
 |                                                                     |
 |   /auth/signin   [DONE]                                             |
-|      ├── -> /auth/signup                                            |
-|      └── -> /auth/forgot-password [MISSING]                         |
+|      |- 'Forgot?' inline -> /auth/forgot-password [DONE]            |
+|      `- -> /auth/reset-password?token=... [DONE]                    |
 |                                                                     |
-|   /support  [DONE]   /sports  [DONE]   /dashboard/*  [DONE]         |
+|   /support [DONE - real form -> POST /api/support]                  |
+|   /sports  [DONE]   /dashboard/*  [DONE]                            |
 |                                                                     |
-|   /notifications  [MISSING - full page not built]                   |
+|   /dashboard/admin/audit-log  [NEW - dev-mode reset URL viewer]     |
 +---------------------------------------------------------------------+
-
-
-            API SURFACE  [LIVE]                              [GAPS]
-   /api/markets             /api/trades             /api/claim
-   /api/markets/[id]        /api/positions          /api/trending
-   /api/markets/[id]/       /api/positions/close    /api/notifications/[id]/read
-       price-history        /api/notifications      /api/u/[username]
-   /api/markets/updates     /api/leaderboard        /api/auth/forgot-password
-   /api/me                  /api/health
-   /api/deposits            /api/status
-   /api/deposits/address    /api/admin/markets/[id]/resolve
-   /api/withdrawals         /api/admin/withdrawals/*
-   /api/auth/[...nextauth]  /api/cron/close-expired
-   /api/auth/signup         /api/admin/audit-log
-   /api/auth/siwe/nonce     /api/stream  (SSE)
 """
 
 
-# ── Status pill ───────────────────────────────────────────────
+# ── API surface ───────────────────────────────────────────────
+API_SURFACE = r"""
+PUBLIC                                     AUTH'D
+   GET  /api/markets                          GET   /api/me
+   GET  /api/markets/[id]                     GET   /api/me/notifications/preferences
+   GET  /api/markets/[id]/price-history       PATCH /api/me/notifications/preferences
+   GET  /api/markets/updates                  POST  /api/me/password
+   GET  /api/leaderboard                      POST  /api/trades
+   GET  /api/u/[username]                     GET   /api/positions
+   GET  /api/notifications                    POST  /api/positions/close
+   POST /api/notifications  (mark read)       POST  /api/claim
+   GET  /api/health                           POST  /api/deposits
+   GET  /api/status                           GET   /api/deposits/address
+   POST /api/auth/signup                      POST  /api/withdrawals
+   POST /api/auth/forgot-password
+   POST /api/auth/reset-password
+   POST /api/auth/siwe/nonce
+   POST /api/support
+
+ADMIN-ONLY                                 BACKGROUND
+   POST /api/admin/markets                    GET   /api/cron/close-expired
+   POST /api/admin/markets/[id]/resolve       SSE   /api/stream
+   GET  /api/admin/audit-log
+   GET  /api/admin/withdrawals
+   POST /api/admin/withdrawals/[id]/complete
+   POST /api/admin/withdrawals/[id]/reject
+
+   /api/auth/[...nextauth]   (NextAuth handlers)
+"""
+
+
+# ── Feature inventory ────────────────────────────────────────
+FEATURE_GROUPS = [
+    {
+        "name": "Core trading",
+        "items": [
+            "Market list with category filter, sort, search",
+            "Market detail (chart, order panel, comments, related markets)",
+            "YES / NO buy with slippage + fee preview",
+            "Close position (sell back to AMM)",
+            "Claim payout on resolved-win positions (idempotent)",
+            "Live SSE price + trade ticker",
+        ],
+    },
+    {
+        "name": "Discovery",
+        "items": [
+            "Home feed with hero slideshow + 10 thematic rails",
+            "Trending page with infinite scroll + 4 sort modes",
+            "Category carousel + chips",
+            "Search modal (Cmd-K, '/', icon)",
+            "Sports vertical (/sports, /sports/all, /sports/esports)",
+            "Editorial picks, top movers, closing today, crowd-vs-reality",
+        ],
+    },
+    {
+        "name": "Identity & social",
+        "items": [
+            "Email + password signup / signin (NextAuth)",
+            "Forgot-password flow (sha256-hashed single-use tokens)",
+            "Public profile /u/[username] with real PnL / win rate / rank",
+            "Self profile /profile (server redirect to public view)",
+            "Leaderboard with timeframe filter + your-rank callout",
+            "Comments on market detail (SocialSection)",
+        ],
+    },
+    {
+        "name": "Wallet & money",
+        "items": [
+            "USDC balance with deposit / withdraw flows",
+            "Per-token balance map (plumbing; populates with multi-token deposits)",
+            "Multi-currency display picker (USD / INR / EUR / GBP / JPY / BRL / AUD / CAD)",
+            "Transaction history with type filters",
+            "24h PnL chip with sparkline overlay",
+        ],
+    },
+    {
+        "name": "Notifications",
+        "items": [
+            "Real-time SSE-pushed unread count",
+            "Navbar dropdown with mark-as-read",
+            "Full inbox at /notifications with All / Unread tabs",
+            "Per-channel preferences (email / push / SMS) persisted",
+        ],
+    },
+    {
+        "name": "Settings",
+        "items": [
+            "Tabbed overview at /settings",
+            "Real password change (POST /api/me/password)",
+            "Notification preferences (persisted)",
+            "Currency display (localStorage)",
+            "Language picker in LeftRail (10 languages, localStorage)",
+        ],
+    },
+    {
+        "name": "Gamification",
+        "items": [
+            "Trading streak (consecutive UTC days, on-demand from Trade table)",
+            "StreakBanner with adaptive copy + progress dots",
+        ],
+    },
+    {
+        "name": "Admin",
+        "items": [
+            "Market creation + resolution (with optional on-chain mirror)",
+            "Withdrawal approve / reject / complete",
+            "Audit log viewer with action filter + dev-mode reset URL extractor",
+        ],
+    },
+    {
+        "name": "Smart contracts (demo)",
+        "items": [
+            "PredictionMarket.sol: constant-product AMM, owner-resolved",
+            "Foundry test suite: 14 unit + 1 fuzz",
+            "Hybrid mode: admin API mirrors createMarket / resolve on-chain",
+            "viem read wrapper + admin signer (server-only)",
+            "Deploy script targeting Anvil + Polygon Amoy",
+        ],
+    },
+    {
+        "name": "Infrastructure",
+        "items": [
+            "Postgres + Prisma (Decimal-safe money)",
+            "Server-Sent Events (/api/stream) for live updates",
+            "Rate limiting (per-IP, per-user)",
+            "Audit logging (append-only)",
+            "Cron: auto-close expired markets",
+            "Health + status endpoints",
+            "SIWE nonce endpoint (web3 sign-in foundation)",
+        ],
+    },
+]
+
+
+# ── Status pill helper ────────────────────────────────────────
 def status_pill(label, status, styles):
-    bg = {DONE: DONE_BG, PARTIAL: PARTIAL_BG, MISSING: MISSING_BG, DEFERRED: DEFERRED_BG}[status]
-    style_key = {DONE: "tag_done", PARTIAL: "tag_partial",
-                 MISSING: "tag_missing", DEFERRED: "tag_deferred"}[status]
-    p = Paragraph(f"<b>{label}</b>", styles[style_key])
-    tbl = Table([[p]], colWidths=[26 * mm], rowHeights=[7 * mm])
+    bg_map = {
+        DONE: DONE_BG, PARTIAL: PARTIAL_BG, BLOCKED: BLOCKED_BG,
+        MISSING: MISSING_BG, DEFERRED: DEFERRED_BG,
+    }
+    style_map = {
+        DONE: "tag_done", PARTIAL: "tag_partial", BLOCKED: "tag_blocked",
+        MISSING: "tag_missing", DEFERRED: "tag_deferred",
+    }
+    bg = bg_map[status]
+    p = Paragraph(f"<b>{label}</b>", styles[style_map[status]])
+    tbl = Table([[p]], colWidths=[34 * mm], rowHeights=[7 * mm])
     tbl.setStyle(TableStyle([
         ("BACKGROUND",   (0, 0), (-1, -1), bg),
         ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
@@ -428,7 +671,6 @@ def status_pill(label, status, styles):
         ("RIGHTPADDING", (0, 0), (-1, -1), 4),
         ("TOPPADDING",   (0, 0), (-1, -1), 1),
         ("BOTTOMPADDING",(0, 0), (-1, -1), 1),
-        ("ROUNDEDCORNERS", [3, 3, 3, 3]),
     ]))
     return tbl
 
@@ -439,11 +681,7 @@ def build_item_card(item, styles):
         f"<b>{item['n']}. {item['title']}</b>", styles["item_h"]
     )
 
-    # Header row: title + pill on the right
-    header = Table(
-        [[title_para, pill]],
-        colWidths=[140 * mm, 28 * mm],
-    )
+    header = Table([[title_para, pill]], colWidths=[132 * mm, 36 * mm])
     header.setStyle(TableStyle([
         ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING",  (0, 0), (-1, -1), 0),
@@ -452,13 +690,12 @@ def build_item_card(item, styles):
         ("BOTTOMPADDING",(0, 0), (-1, -1), 0),
     ]))
 
-    # Done / Missing rows
     done_label = Paragraph(
         "<b><font color='#15803D'>Done</font></b>",
         ParagraphStyle("dl", fontName="Helvetica-Bold", fontSize=9, leading=12),
     )
     miss_label = Paragraph(
-        "<b><font color='#B91C1C'>Missing</font></b>",
+        "<b><font color='#9A3412'>Notes</font></b>",
         ParagraphStyle("ml", fontName="Helvetica-Bold", fontSize=9, leading=12),
     )
 
@@ -475,13 +712,49 @@ def build_item_card(item, styles):
         ("BOTTOMPADDING",(0, 0), (-1, -1), 3),
     ]))
 
-    # Hairline separator
     sep = Table([[""]], colWidths=[168 * mm], rowHeights=[0.4])
     sep.setStyle(TableStyle([
         ("LINEBELOW", (0, 0), (-1, -1), 0.4, HAIRLINE),
     ]))
 
     return KeepTogether([header, Spacer(1, 2), body_tbl, Spacer(1, 6), sep])
+
+
+def build_action_card(action, styles, idx):
+    title_para = Paragraph(
+        f"<b>{idx}. {action['title']}</b>",
+        ParagraphStyle("ah", fontName="Helvetica-Bold", fontSize=12,
+                       leading=15, textColor=BLOCKED_FG, spaceAfter=2),
+    )
+    why = Paragraph(
+        f"<b>Why:</b> {action['why']}",
+        styles["body"],
+    )
+    how = Paragraph(
+        f"<b>How:</b> {action['how']}",
+        styles["body"],
+    )
+    blocker = Paragraph(
+        f"<b><font color='#9A3412'>Blocks:</font></b> {action['blocker_for']} "
+        f"&middot; <b>Effort:</b> {action['effort']}",
+        styles["small"],
+    )
+    sep = Table([[""]], colWidths=[168 * mm], rowHeights=[0.4])
+    sep.setStyle(TableStyle([
+        ("LINEBELOW", (0, 0), (-1, -1), 0.4, HAIRLINE),
+    ]))
+    return KeepTogether([
+        title_para, Spacer(1, 2), why, how, blocker, Spacer(1, 6), sep,
+    ])
+
+
+def build_feature_group(group, styles):
+    h = Paragraph(group["name"], styles["subsection_h"])
+    items = [
+        Paragraph(f"&bull;&nbsp;&nbsp;{i}", styles["callout"])
+        for i in group["items"]
+    ]
+    return KeepTogether([h, *items, Spacer(1, 4)])
 
 
 def draw_page_chrome(canvas, doc):
@@ -499,118 +772,128 @@ def draw_page_chrome(canvas, doc):
 def build_pdf(out_path: str):
     styles = build_styles()
     doc = SimpleDocTemplate(
-        out_path,
-        pagesize=A4,
-        leftMargin=20 * mm,
-        rightMargin=20 * mm,
-        topMargin=22 * mm,
-        bottomMargin=22 * mm,
+        out_path, pagesize=A4,
+        leftMargin=20 * mm, rightMargin=20 * mm,
+        topMargin=22 * mm, bottomMargin=22 * mm,
         title="NEXORA - Implementation Status",
         author="NEXORA",
     )
 
     story = []
 
-    # ── Header ────────────────────────────────────────────────
+    # ── Title page ────────────────────────────────────────────
     story.append(Paragraph("NEXORA &mdash; Implementation Status", styles["title"]))
     story.append(Paragraph(
-        "Audit of the original 12-item roadmap &middot; "
-        "Extras shipped &middot; Punch-list &middot; Navigation flowchart",
+        "Full project snapshot &middot; What's done &middot; What's left "
+        "&middot; What needs your involvement &middot; Navigation flow "
+        "&middot; Feature inventory",
         styles["subtitle"],
     ))
 
-    # ── Summary stats ─────────────────────────────────────────
-    counts = {DONE: 0, PARTIAL: 0, MISSING: 0, DEFERRED: 0}
+    # Summary tile
+    counts = {DONE: 0, PARTIAL: 0, BLOCKED: 0, MISSING: 0, DEFERRED: 0}
     for item in ITEMS:
         counts[item["status"]] += 1
 
     summary_rows = [[
         Paragraph(f"<b><font color='#15803D' size='14'>{counts[DONE]}</font></b><br/>"
-                  f"<font size='8' color='#6B7280'>COMPLETE</font>",
-                  styles["body"]),
+                  f"<font size='8' color='#6B7280'>COMPLETE</font>", styles["body"]),
+        Paragraph(f"<b><font color='#9A3412' size='14'>{counts[BLOCKED]}</font></b><br/>"
+                  f"<font size='8' color='#6B7280'>DEPLOY-BLOCKED</font>", styles["body"]),
         Paragraph(f"<b><font color='#A16207' size='14'>{counts[PARTIAL]}</font></b><br/>"
-                  f"<font size='8' color='#6B7280'>PARTIAL</font>",
-                  styles["body"]),
+                  f"<font size='8' color='#6B7280'>PARTIAL</font>", styles["body"]),
         Paragraph(f"<b><font color='#B91C1C' size='14'>{counts[MISSING]}</font></b><br/>"
-                  f"<font size='8' color='#6B7280'>MISSING</font>",
-                  styles["body"]),
-        Paragraph(f"<b><font color='#374151' size='14'>{counts[DEFERRED]}</font></b><br/>"
-                  f"<font size='8' color='#6B7280'>DEFERRED</font>",
-                  styles["body"]),
+                  f"<font size='8' color='#6B7280'>MISSING</font>", styles["body"]),
     ]]
     summary_tbl = Table(summary_rows, colWidths=[42 * mm] * 4)
     summary_tbl.setStyle(TableStyle([
         ("BACKGROUND",   (0, 0), (0, 0), DONE_BG),
-        ("BACKGROUND",   (1, 0), (1, 0), PARTIAL_BG),
-        ("BACKGROUND",   (2, 0), (2, 0), MISSING_BG),
-        ("BACKGROUND",   (3, 0), (3, 0), DEFERRED_BG),
+        ("BACKGROUND",   (1, 0), (1, 0), BLOCKED_BG),
+        ("BACKGROUND",   (2, 0), (2, 0), PARTIAL_BG),
+        ("BACKGROUND",   (3, 0), (3, 0), MISSING_BG),
         ("ALIGN",        (0, 0), (-1, -1), "CENTER"),
         ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",   (0, 0), (-1, -1), 8),
         ("BOTTOMPADDING",(0, 0), (-1, -1), 8),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     story.append(summary_tbl)
     story.append(Spacer(1, 14))
 
-    # ── Items section ─────────────────────────────────────────
-    story.append(Paragraph("Per-item status", styles["section_h"]))
+    story.append(Paragraph(
+        f"<b>Bottom line:</b> {counts[DONE]} of 12 roadmap items are fully done. "
+        f"The remaining 1 (smart contracts) is deploy-blocked &mdash; the code is "
+        f"shipped + tested in Foundry, but it needs your wallet to push to Polygon "
+        f"Amoy. Every other item that's been called out as missing in prior audits "
+        f"is now built. The only outstanding work needs external services (email, "
+        f"WalletConnect projectId, FX provider) or audit / scope-bound features "
+        f"(2FA, sessions). See <i>Action Items</i> below.",
+        styles["body"],
+    ))
+
+    # ── Roadmap items ─────────────────────────────────────────
+    story.append(Paragraph("12-item roadmap status", styles["section_h"]))
     for item in ITEMS:
         story.append(build_item_card(item, styles))
 
-    # ── Extras section ────────────────────────────────────────
+    # ── Action items ──────────────────────────────────────────
     story.append(PageBreak())
-    story.append(Paragraph("Extras shipped (not on the original roadmap)",
-                           styles["section_h"]))
-    for line in EXTRAS:
+    story.append(Paragraph(
+        "Action items &mdash; what needs YOUR involvement",
+        styles["section_h"],
+    ))
+    story.append(Paragraph(
+        "Each of these is blocked on something only you can provide: a "
+        "credential, a deployment, or a scope decision. Once unblocked, the "
+        "code path on each is short.",
+        styles["body"],
+    ))
+    for i, action in enumerate(ACTION_ITEMS, start=1):
+        story.append(build_action_card(action, styles, i))
+
+    # ── Built since last audit ────────────────────────────────
+    story.append(PageBreak())
+    story.append(Paragraph("Built this sprint", styles["section_h"]))
+    story.append(Paragraph(
+        "Snapshot of the work shipped between the original 12-item roadmap "
+        "audit and now:",
+        styles["body"],
+    ))
+    for line in SHIPPED_THIS_SWEEP:
         story.append(Paragraph(f"&bull;&nbsp;&nbsp;{line}", styles["callout"]))
 
-    # ── Punch list ────────────────────────────────────────────
-    story.append(Spacer(1, 14))
-    story.append(Paragraph("Remaining / incomplete (punch-list)",
-                           styles["section_h"]))
-    punch_rows = []
-    for area, item in PUNCH_LIST:
-        punch_rows.append([
-            Paragraph(f"<b>{area}</b>",
-                      ParagraphStyle("pa", fontName="Helvetica-Bold",
-                                     fontSize=10, leading=14, textColor=VIOLET_DARK)),
-            Paragraph(item, styles["body"]),
-        ])
-    punch_tbl = Table(punch_rows, colWidths=[34 * mm, 134 * mm])
-    punch_tbl.setStyle(TableStyle([
-        ("VALIGN",       (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING",   (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
-        ("LINEBELOW",    (0, 0), (-1, -1), 0.3, HAIRLINE),
-        ("BACKGROUND",   (0, 0), (0, -1), TAG_BG),
-    ]))
-    story.append(punch_tbl)
-
-    # ── Build order ───────────────────────────────────────────
-    story.append(Spacer(1, 14))
-    story.append(Paragraph("Recommended build order to close out gaps",
-                           styles["section_h"]))
-    story.append(Paragraph("Cheapest wins first &mdash; top to bottom:",
-                           styles["body"]))
-    story.append(Spacer(1, 4))
-    for i, line in enumerate(BUILD_ORDER, start=1):
-        story.append(Paragraph(f"{i}.&nbsp;&nbsp;{line}", styles["callout"]))
-
-    # ── Flowchart ─────────────────────────────────────────────
+    # ── Feature inventory ─────────────────────────────────────
     story.append(PageBreak())
-    story.append(Paragraph("Full navigation flowchart", styles["section_h"]))
+    story.append(Paragraph("Feature inventory", styles["section_h"]))
+    story.append(Paragraph(
+        "Everything currently shipping in the app, grouped by domain.",
+        styles["body"],
+    ))
+    for group in FEATURE_GROUPS:
+        story.append(build_feature_group(group, styles))
+
+    # ── Navigation flow ───────────────────────────────────────
+    story.append(PageBreak())
+    story.append(Paragraph("Full navigation flow", styles["section_h"]))
     story.append(Paragraph(
         "Entry points (Navbar &middot; LeftRail &middot; Home feed) and where "
-        "every primary route leads. <font color='#B91C1C'>Red</font> labels mark "
-        "missing pieces.",
+        "every primary route leads. All [DONE] items below were [MISSING] or "
+        "[PARTIAL] in the original audit.",
         styles["small"],
     ))
     story.append(Spacer(1, 4))
-    story.append(Preformatted(FLOWCHART, styles["mono"]))
+    story.append(Preformatted(NAV_FLOWCHART, styles["mono"]))
+
+    # ── API surface ───────────────────────────────────────────
+    story.append(PageBreak())
+    story.append(Paragraph("API surface", styles["section_h"]))
+    story.append(Paragraph(
+        "Every HTTP endpoint currently live. Public = no auth required; "
+        "Auth'd = NextAuth session; Admin = USER.role == 'ADMIN'.",
+        styles["small"],
+    ))
+    story.append(Spacer(1, 4))
+    story.append(Preformatted(API_SURFACE, styles["mono"]))
+
 
     doc.build(story, onFirstPage=draw_page_chrome, onLaterPages=draw_page_chrome)
 
