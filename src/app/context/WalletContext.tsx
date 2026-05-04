@@ -125,6 +125,9 @@ interface WalletContextType {
     /// stays canonical in `balance` — non-USDC tokens populate when
     /// multi-token deposits ship. Pass through to the wallet page.
     tokenBalances: Record<string, string>;
+    /// Trading streak — consecutive UTC days with at least one trade,
+    /// ending today or yesterday. Powers the home StreakBanner.
+    streak: { days: number; tradedToday: boolean };
     trades: Trade[];
     myTrades: Trade[];
     markets: Market[];
@@ -158,6 +161,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 export function WalletProvider({ children }: { children: ReactNode }) {
     const [balance, setBalance] = useState<number>(0);
     const [tokenBalances, setTokenBalances] = useState<Record<string, string>>({});
+    const [streak, setStreak] = useState<{ days: number; tradedToday: boolean }>({
+        days: 0,
+        tradedToday: false,
+    });
     const [trades, setTrades] = useState<Trade[]>([]);
     const [markets, setMarkets] = useState<Market[]>([]);
     const marketsRef = useRef<Market[]>([]);
@@ -191,12 +198,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         try {
             const data = await api<{
                 balance: { available: string; tokens?: Record<string, string> };
+                streak?: { days: number; tradedToday: boolean };
             }>(`/api/me`);
             setBalance(parseFloat(data.balance.available));
             setTokenBalances(data.balance.tokens ?? {});
+            setStreak(data.streak ?? { days: 0, tradedToday: false });
         } catch {
             setBalance(0);
             setTokenBalances({});
+            setStreak({ days: 0, tradedToday: false });
         }
     }, []);
 
@@ -297,6 +307,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (sessionStatus !== "authenticated") {
             setBalance(0);
             setTokenBalances({});
+            setStreak({ days: 0, tradedToday: false });
             setTrades([]);
         }
     }
@@ -341,6 +352,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
                 setMarkets((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
                 setBalance(parseFloat(data.balance.available));
                 setTrades((prev) => [tradeFromDTO(data.trade, updated.question), ...prev]);
+                // Optimistic streak bump for the first trade of the
+                // UTC day. Server-side recompute happens on the next
+                // /api/me; we won't double-count if user trades again
+                // because tradedToday is sticky.
+                setStreak((s) =>
+                    s.tradedToday ? s : { days: s.days + 1, tradedToday: true },
+                );
 
                 toast({
                     type: "success",
@@ -447,6 +465,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             value={{
                 balance,
                 tokenBalances,
+                streak,
                 trades,
                 myTrades,
                 markets,

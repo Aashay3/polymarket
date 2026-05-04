@@ -8,17 +8,21 @@
 import { handler, ok } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-helpers";
+import { computeStreak } from "@/lib/streak";
 
 export const dynamic = "force-dynamic";
 
 export const GET = handler(async () => {
   const user = await requireUser();
 
-  const balance = await prisma.balance.upsert({
-    where: { userId: user.id },
-    update: {},
-    create: { userId: user.id, available: 0, locked: 0 },
-  });
+  const [balance, streak] = await Promise.all([
+    prisma.balance.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id, available: 0, locked: 0 },
+    }),
+    computeStreak(user.id),
+  ]);
 
   // `balance.tokens` is a JSON map of per-token balances. USDC stays
   // canonical in `available` (every trade settles in USDC). Other
@@ -43,6 +47,10 @@ export const GET = handler(async () => {
       totalDeposited: balance.totalDeposited.toString(),
       totalWithdrawn: balance.totalWithdrawn.toString(),
       tokens,
+    },
+    streak: {
+      days: streak.days,
+      tradedToday: streak.tradedToday,
     },
   });
 });

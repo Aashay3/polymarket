@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useWallet } from "@/app/context/WalletContext";
 
 /**
  * Home-feed promo banner: 5-day trading streak reward.
@@ -10,19 +11,23 @@ import Link from "next/link";
  * (`/brand/streak_banner.png`). Falls back to a violet→fuchsia
  * gradient if the image isn't present.
  *
- * `streak` is hardcoded for now — wire to real user state once we add
- * a streak field on the wallet/session context.
+ * Streak is read from WalletContext (which fetches it from /api/me,
+ * computed on-demand from the Trade table — see src/lib/streak.ts).
+ * Override via `streak` prop for storybook / static previews.
  */
 export function StreakBanner({
-  streak = 3,
+  streak,
   target = 5,
-  reward = "₹100",
+  reward = "$5",
 }: {
   streak?: number;
   target?: number;
   reward?: string;
 }) {
-  const filled = Math.min(Math.max(0, streak), target);
+  const ctx = useWallet();
+  const live = streak ?? ctx.streak.days;
+  const filled = Math.min(Math.max(0, live), target);
+  const tradedToday = ctx.streak.tradedToday;
 
   return (
     <Link
@@ -60,7 +65,11 @@ export function StreakBanner({
             {target}-Day Streak
           </h2>
           <p className="text-sm md:text-base font-bold text-white/90 mt-1 max-w-md">
-            Trade {target} days in a row · unlock a {reward} bonus.
+            {live >= target
+              ? `${reward} bonus unlocked — claim below.`
+              : tradedToday
+                ? `Trade ${target} days in a row · ${target - live} to go for ${reward}.`
+                : `Trade ${target} days in a row · unlock a ${reward} bonus.`}
           </p>
 
           {/* Progress dots */}
