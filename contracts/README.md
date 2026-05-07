@@ -32,12 +32,49 @@ contracts/
 ├── foundry.toml          # toolchain config + RPC endpoints
 ├── src/
 │   ├── PredictionMarket.sol
-│   └── MockUSDC.sol      # 6-decimal mintable test token
+│   ├── MockUSDC.sol      # 6-decimal mintable test token
+│   └── SidzSol.sol       # SIDZSOL — fixed-supply 100M ERC-20 (Permit + Burnable)
 ├── test/
-│   └── PredictionMarket.t.sol
+│   ├── PredictionMarket.t.sol
+│   └── SidzSol.t.sol
 └── script/
-    └── Deploy.s.sol
+    ├── Deploy.s.sol         # PredictionMarket
+    └── DeploySidzSol.s.sol  # SIDZSOL token
 ```
+
+## SIDZSOL token
+
+`SidzSol.sol` is a standalone ERC-20 — independent of the prediction
+market — intended as the project's circulating utility token.
+
+| Property        | Value                                            |
+| --------------- | ------------------------------------------------ |
+| Name / Symbol   | `SidzSol` / `SIDZSOL`                            |
+| Decimals        | 18                                               |
+| Total supply    | 100,000,000 (minted to `treasury` at deploy)     |
+| Mintable later  | No — supply is fixed at construction             |
+| Burnable        | Yes — holders can burn their own balance         |
+| EIP-2612 Permit | Yes — gasless approvals for DEX integrations     |
+| Owner / admin   | None — no privileged role exists                 |
+
+### Deploy SIDZSOL to Polygon Amoy
+
+```bash
+cd contracts
+export DEPLOYER_PRIVATE_KEY=0x<your-key>
+export POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
+export POLYGONSCAN_API_KEY=<for verification>
+# optional — defaults to deployer if unset
+export TREASURY_ADDRESS=0x<treasury-multisig-or-eoa>
+
+forge script script/DeploySidzSol.s.sol \
+  --rpc-url amoy \
+  --broadcast \
+  --verify
+```
+
+After deploy, copy the printed address into `.env.local` as
+`NEXT_PUBLIC_SIDZSOL_ADDRESS` so the frontend token list picks it up.
 
 ## Setup
 
